@@ -1,56 +1,55 @@
 import numpy as np
 import logging
-from pprint import pprint, pformat
+from pprint import pformat
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 # Get a tuple for our training dataset
 def binomial(sample_size) -> (dict, list):
-    # Generate n from Rayleigh distribution (smooth Poisson distribution) with sigma=1
-    n = np.ceil(np.random.rayleigh(scale=100.0))
-    logging.debug(f'n\t\t= {n}')
+    rng = np.random.default_rng()
+
+    # Generate n from Rayleigh distribution (smooth Poisson distribution),
+    # similarly to how we generated stddev for normal distributions
+    n = np.ceil(rng.rayleigh(scale=100.0))
 
     # Generate p uniformly from [0.0, 1.0)
-    p = np.random.uniform(low=0.0, high=1.0)
-    logging.debug(f'p\t\t= {p}')
+    p = rng.uniform(low=0.0, high=1.0)
 
-    # Sample from the binomial distribution specified by n and p
-    sample_data = np.random.binomial(n, p, sample_size)
-    logging.debug(f'sample_data\t= {sample_data}')
-
-    # Include mean and stddev so that we have a unified way of comparing dists
-    # https://en.wikipedia.org/wiki/Binomial_distribution
+    # Save these values as inputs to the reward function
+    # (Include mean and stddev to give us a unified way to compare dists:
+    # https://en.wikipedia.org/wiki/Binomial_distribution)
     specs = {"distribution_type": "binomial",
              "n": n,
              "p": p,
              "mean": n * p,
              "stddev": np.sqrt(n * p * (1 - p))}
-    logging.debug(f'specs: \n{pformat(specs)}')
 
-    return (specs, sample_data) 
+    # Sample from the binomial distribution specified by n and p
+    sample_data = rng.binomial(n, p, sample_size)
+
+    return (specs, sample_data)
 
 
 def normal(sample_size) -> (dict, list):
-    # np.random.random_sample() gives a value in [0.0, 1.0),
-    # so multiply by -1 or 1 to get values in (-1.0, 1.0)
-    sign = np.random.choice([-1, 1])
-    mean = np.random.random_sample() * sign
-    logging.debug(f'mean\t\t= {mean}')
+    rng = np.random.default_rng()
+
+    # numpy.random.Generator.uniform() gives a value in [0.0, 1.0),
+    # so multiply by a sign bit to get values in (-1.0, 1.0)
+    sign = rng.choice([-1, 1])
+    mean = rng.uniform() * sign
 
     # Draw from Rayleigh distribution with sigma=1
-    stddev = np.random.rayleigh(scale=1.0)
-    logging.debug(f'stddev\t= {stddev}')
+    stddev = rng.rayleigh(scale=1.0)
 
-    # Get `sample_size` points from normal distribution with given specs
-    sample_data = np.random.normal(mean, stddev, sample_size)
-    logging.debug(f'sample_data\t= {sample_data}')
-
+    # Save these values (mean and stddev) as inputs to the reward function
     specs = {"distribution_type": "normal",
              "mean": mean,
              "stddev": stddev}
-    logging.debug(f'specs: \n{pformat(specs)}')
 
-    return (specs, sample_data) 
+    # Get `sample_size` points from normal distribution with given specs
+    sample_data = rng.normal(mean, stddev, sample_size)
+
+    return (specs, sample_data)
 
 
 '''
@@ -73,7 +72,6 @@ def generate_training_data(count, sample_size):
                 data_piece = normal(sample_size)
             elif dist == 'binomial':
                 data_piece = binomial(sample_size)
-            
             logging.info(f'data_piece: \n{pformat(data_piece)}\n')
             training_data.append(data_piece)
 
