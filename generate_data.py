@@ -92,7 +92,7 @@ def generate_data(count, sample_size):
                 data_piece = binomial(sample_size)
             elif dist == 'exponential':
                 data_piece = exponential(sample_size)
-            logger.info(f'data_piece: \n{pformat(data_piece)}\n')
+            # logger.info(f'data_piece: \n{pformat(data_piece)}\n')
             data.append(data_piece)
 
     return data
