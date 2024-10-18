@@ -52,6 +52,24 @@ def normal(sample_size) -> (dict, list):
     return (specs, sample_data)
 
 
+def exponential(sample_size) -> (dict, list):
+    rng = np.random.default_rng()
+
+    # Draw from Rayleigh distribution with sigma=1
+    rate = rng.rayleigh(scale=1.0)
+
+    # Save these values (mean and stddev) as inputs to the reward function
+    specs = {"distribution_type": "normal",
+             "rate": rate,
+             "mean": 1 / rate,
+             "stddev": 1 / rate}
+
+    # Get `sample_size` points from normal distribution with given specs
+    sample_data = rng.exponential(rate, sample_size)
+
+    return (specs, sample_data)
+
+
 '''
 Generate a training dataset where each piece of data is an ordered pair:
     (distribution type and parameters,
@@ -72,6 +90,8 @@ def generate_training_data(count, sample_size):
                 data_piece = normal(sample_size)
             elif dist == 'binomial':
                 data_piece = binomial(sample_size)
+            elif dist == 'exponential':
+                data_piece = exponential(sample_size)
             logging.info(f'data_piece: \n{pformat(data_piece)}\n')
             training_data.append(data_piece)
 
