@@ -2,7 +2,7 @@ import numpy as np
 import logging
 from pprint import pformat
 
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("generate_data")
 
 # Get a tuple for our training dataset
 def binomial(sample_size) -> (dict, list):
@@ -71,18 +71,18 @@ def exponential(sample_size) -> (dict, list):
 
 
 '''
-Generate a training dataset where each piece of data is an ordered pair:
+Generate a dataset where each piece of data is an ordered pair:
     (distribution type and parameters,
     set of random sampled points from the distribution)
 
 Parameters:
-`count`: size of training set (number of trials)
+`count`: size of dataset (number of trials)
 `sample_size`: number of points we will show the AI network for each trial
 '''
-def generate_training_data(count, sample_size):
+def generate_data(count, sample_size):
 
-    training_data = []
-    distributions = ['normal', 'binomial']
+    data = []
+    distributions = ['normal', 'binomial', 'exponential']
 
     for _ in range(count):
         for dist in distributions:
@@ -92,10 +92,10 @@ def generate_training_data(count, sample_size):
                 data_piece = binomial(sample_size)
             elif dist == 'exponential':
                 data_piece = exponential(sample_size)
-            logging.info(f'data_piece: \n{pformat(data_piece)}\n')
-            training_data.append(data_piece)
+            logger.info(f'data_piece: \n{pformat(data_piece)}\n')
+            data.append(data_piece)
 
-    return training_data
+    return data
 
 def main():
     training_data = generate_training_data(count=1, sample_size=5)
