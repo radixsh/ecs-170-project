@@ -4,8 +4,21 @@ from pprint import pformat
 
 logger = logging.getLogger("generate_data")
 
+class MyDataset(Dataset):
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        sample = self.data[index]
+        label = self.labels[index]
+        return sample, label
+
 # Get a tuple for our training dataset
-def binomial(sample_size) -> (dict, list):
+def binomial(sample_size) -> (list, list):
     rng = np.random.default_rng()
 
     # Generate n from Rayleigh distribution (smooth Poisson distribution),
@@ -27,10 +40,10 @@ def binomial(sample_size) -> (dict, list):
     # Sample from the binomial distribution specified by n and p
     sample_data = rng.binomial(n, p, sample_size)
 
-    return (specs, sample_data)
+    return (sample_data, specs)
 
 
-def normal(sample_size) -> (dict, list):
+def normal(sample_size) -> (list, list):
     rng = np.random.default_rng()
 
     # numpy.random.Generator.uniform() gives a value in [0.0, 1.0),
@@ -49,10 +62,10 @@ def normal(sample_size) -> (dict, list):
     # Get `sample_size` points from normal distribution with given specs
     sample_data = rng.normal(mean, stddev, sample_size)
 
-    return (specs, sample_data)
+    return (sample_data, specs)
 
 
-def exponential(sample_size) -> (dict, list):
+def exponential(sample_size) -> (list, list):
     rng = np.random.default_rng()
 
     # Draw from Rayleigh distribution with sigma=1
@@ -67,7 +80,7 @@ def exponential(sample_size) -> (dict, list):
     # Get `sample_size` points from normal distribution with given specs
     sample_data = rng.exponential(rate, sample_size)
 
-    return (specs, sample_data)
+    return (sample_data, specs)
 
 
 '''
@@ -87,7 +100,7 @@ def generate_data(count, sample_size):
     for _ in range(count):
         for dist in distributions:
             if dist == 'normal':
-                data_piece = normal(sample_size)
+                data, labels = normal(sample_size)
             elif dist == 'binomial':
                 data_piece = binomial(sample_size)
             elif dist == 'exponential':
