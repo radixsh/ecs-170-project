@@ -2,6 +2,9 @@ import numpy as np
 import logging
 from pprint import pformat
 
+# https://pytorch.org/tutorials/beginner/basics/data_tutorial.html
+from torch.utils.data import Dataset
+
 logger = logging.getLogger("generate_data")
 
 class MyDataset(Dataset):
