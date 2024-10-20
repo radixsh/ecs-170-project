@@ -1,9 +1,0 @@
-[project]
-name = "project"
-version = "0.1.0"
-description = "AI project for ECS 170"
-readme = "README.md"
-requires-python = ">=3.9"
-dependencies = [
-    "numpy>=2.0.2",
-]
