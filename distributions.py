@@ -2,6 +2,7 @@ import numpy as np
 import env
 
 ### TODO:
+# test
 # IMPLEMENT 1HOT SYSTEM
 # IMPLEMENT REMAINING DISTS
 
