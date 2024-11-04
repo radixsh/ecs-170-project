@@ -5,24 +5,13 @@ import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
-from sklearn.metrics import r2_score 
+# from sklearn.metrics import r2_score
 
 from generate_data import generate_data
+from env import SAMPLE_SIZE, TRAINING_SIZE, TEST_SIZE, RUNS, EPOCHS, DISTRIBUTION_TYPES
 
 logger = logging.getLogger("main")
 logging.basicConfig(level=logging.INFO)
-
-# How many (data points, labels) pairs to have for training/testing
-TRAINING_SIZE = 50
-TEST_SIZE = 10
-
-# How many data points should be sampled from each distribution
-SAMPLE_SIZE = 10
-
-# How many times to generate new data and train model on it
-RUNS = 10
-# How many times to repeat the training process per generated dataset 
-EPOCHS = 5
 
 class MyDataset(Dataset):
     def __init__(self, data, labels):
@@ -52,7 +41,7 @@ def train(dataloader, model, loss_fn, optimizer, device):
 
         if batch % 100 == 0:
             loss, current = loss.item(), (batch + 1) * len(X)
-            logging.debug(f"Loss after training: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            logger.debug(f"Loss after training: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 def test(dataloader, model, loss_fn, device):
     size = len(dataloader.dataset)
@@ -60,24 +49,27 @@ def test(dataloader, model, loss_fn, device):
     model.eval()
     test_loss = 0
 
-    guesses = [] 
-    actuals = [] 
+    guesses = []
+    actuals = []
     with torch.no_grad():
         for X, y in dataloader:
             X, y = X.to(device).float(), y.to(device).float()
-            
+
             pred = model(X)
-            guesses.append(pred[0])
-            actuals.append(y[0])
+            logger.debug(f"pred: \t{pred}")
+            logger.debug(f"y: \t\t{y}")
+            # guesses.append(pred)
+            # actuals.append(y)
 
             test_loss += loss_fn(pred, y).item()
+            logger.debug(f"loss: \t{loss_fn(pred,y)}")
 
     test_loss /= num_batches
-    logging.debug(f'guesses: \n{pformat(guesses)}')
-    logging.debug(f'actuals: \n{pformat(actuals)}')
-    r2 = r2_score(actuals, guesses)
+    # logger.debug(f'guesses: \n{pformat(guesses)}')
+    # logger.debug(f'actuals: \n{pformat(actuals)}')
+    # r2 = r2_score(actuals, guesses)
 
-    logging.info(f"R^2: {r2:>0.8f}, Avg loss: {test_loss:>8f}")
+    logging.info(f"Avg loss: {test_loss:>8f}")
 
 def main():
     start = time.time()
@@ -89,16 +81,17 @@ def main():
         if torch.backends.mps.is_available()
         else "cpu"
     )
-    logging.debug(f'device: {device}')
+    logger.debug(f'device: {device}')
 
     model = nn.Sequential(
             # out_features should be len(DISTRIBUTION_TYPES) + 2, for mean and
             # stddev
-            nn.Linear(in_features=SAMPLE_SIZE, out_features=5),
+            nn.Linear(in_features=SAMPLE_SIZE, out_features=32),
             nn.ReLU(),
-            nn.ReLU())
-    logging.debug(model)
-    
+            nn.Linear(in_features=32, out_features=len(DISTRIBUTION_TYPES)+2),
+            )
+    logger.debug(model)
+
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 
@@ -111,7 +104,7 @@ def main():
         # E.g., [0 1 3.5 1.2] indicates that it's an Exponential distribution with
         # mean=3.5 and stddev=1.2
         raw_training_data = generate_data(count=TRAINING_SIZE, sample_size=SAMPLE_SIZE)
-        logging.debug(f'raw_training_data: \n{pformat(raw_training_data)}')
+        # logger.debug(f'raw_training_data: \n{pformat(raw_training_data)}')
         training_samples = np.array([elem[0] for elem in raw_training_data])
         training_labels = np.array([elem[1] for elem in raw_training_data])
         training_dataset = MyDataset(training_samples, training_labels)
@@ -124,13 +117,13 @@ def main():
         test_dataloader = DataLoader(test_dataset)
 
         for t in range(EPOCHS):
-            logging.debug(f"\nEpoch {t+1}\n-------------------------------")
+            logger.debug(f"\nEpoch {t+1}\n-------------------------------")
             train(training_dataloader, model, loss_fn, optimizer, device)
             test(test_dataloader, model, loss_fn, device)
         run_end = time.time()
         logging.info(f"Finished run {r + 1} of {RUNS} in " +
                      f"{run_end - run_start:.2f} seconds")
-   
+
     end = time.time()
     logging.info(f"Finished overall in {end - start:.2f} seconds")
 
