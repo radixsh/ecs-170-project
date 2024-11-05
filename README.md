@@ -45,13 +45,10 @@ distribution with mean=-0.10 and stddev=0.96:
 ## Hyperparameters held fixed for now
 ```python
 TRAINING_SIZE = 1000
-
 TEST_SIZE = 200
-
 SAMPLE_SIZE = 50
 
 RUNS = 10
-
 EPOCHS = 10
 
 DISTRIBUTION_TYPES = ["exponential", "normal"]
@@ -89,6 +86,32 @@ Conclusion: ReLU helps
 * Training time: IINFO:main:Finished run 10 of 10 in 13.06 seconds
 * Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.237162
 Conclusion: ReLU helps
+
+
+## Another run, with different hyperparameters
+```python
+TRAINING_SIZE = 1000
+TEST_SIZE = 100
+SAMPLE_SIZE = 20
+
+RUNS = 10
+EPOCHS = 10
+
+DISTRIBUTION_TYPES = ["exponential", "normal"]
+
+MODEL = nn.Sequential(
+        nn.Linear(in_features=SAMPLE_SIZE, out_features=64),
+        nn.ReLU(),
+        nn.Linear(in_features=64, out_features=32),
+        nn.ReLU(),
+        nn.Linear(in_features=32, out_features=len(DISTRIBUTION_TYPES)+2))
+
+LOSS_FN = nn.L1Loss()
+OPTIMIZER = torch.optim.SGD(MODEL.parameters(), lr=1e-3)
+```
+20x64x32x4: 2 hidden layers, 64 and 32 units, both ReLU()'d:
+* Training time: INFO:main:Finished overall in 250.36 seconds
+* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.23489890832826504
 
 
 # Resources
