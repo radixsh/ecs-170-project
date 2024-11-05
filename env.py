@@ -3,10 +3,10 @@ from torch import nn
 
 # How many (data points, labels) pairs to have for training/testing
 TRAINING_SIZE = 1000
-TEST_SIZE = 200
+TEST_SIZE = 100
 
 # How many data points should be sampled from each distribution
-SAMPLE_SIZE = 50
+SAMPLE_SIZE = 20
 
 # How many times to generate new data and train model on it
 RUNS = 10
@@ -19,11 +19,13 @@ DISTRIBUTION_TYPES = ["exponential", "normal"]
 
 # Model architecture (the below indicates 1 hidden layer of 32 units)
 MODEL = nn.Sequential(
-        nn.Linear(in_features=SAMPLE_SIZE, out_features=SAMPLE_SIZE),
-        nn.Linear(in_features=SAMPLE_SIZE, out_features=10),
+        nn.Linear(in_features=SAMPLE_SIZE, out_features=64),
+        nn.ReLU(),
+        nn.Linear(in_features=64, out_features=32),
+        nn.ReLU(),
         # out_features should be len(DISTRIBUTION_TYPES) + 2, for the one
         # hot vector for distribution type, plus mean and stddev
-        nn.Linear(in_features=10, out_features=len(DISTRIBUTION_TYPES)+2))
+        nn.Linear(in_features=32, out_features=len(DISTRIBUTION_TYPES)+2))
 
 DEVICE = (
     "cuda"
