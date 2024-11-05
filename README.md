@@ -41,6 +41,27 @@ distribution with mean=-0.10 and stddev=0.96:
 ([-2.55,  1.13,  0.94,  1.09,  0.94],
 	 [0, 0, 1, -0.10, 0.96])]
 ```
+# Performance
+## Hyperparameters held fixed for now
+```python
+TRAINING_SIZE = 1000
+TEST_SIZE = 200
+SAMPLE_SIZE = 50
+RUNS = 10
+EPOCHS = 10
+DISTRIBUTION_TYPES = ["exponential", "normal"]
+MODEL = nn.Sequential(
+        nn.Linear(in_features=SAMPLE_SIZE, out_features=SAMPLE_SIZE),
+        nn.ReLU(),
+        nn.Linear(in_features=SAMPLE_SIZE, out_features=len(DISTRIBUTION_TYPES)+2))
+LOSS_FN = nn.L1Loss()
+OPTIMIZER = torch.optim.SGD(MODEL.parameters(), lr=1e-3)
+```
+
+## Stats
+50x50x4: 1 hidden layer of 50 units, with ReLU()
+* Training time: INFO:main:Finished overall in 209.98 seconds
+* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.2968025193359936
 
 # Resources
 * https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html
