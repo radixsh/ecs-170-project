@@ -3,7 +3,7 @@ from torch import nn
 
 # How many (data points, labels) pairs to have for training/testing
 TRAINING_SIZE = 1000
-TEST_SIZE = 50
+TEST_SIZE = 200
 
 # How many data points should be sampled from each distribution
 SAMPLE_SIZE = 50
@@ -33,5 +33,6 @@ DEVICE = (
     else "cpu"
 )
 
-LOSS_FN = nn.MSELoss()
+LOSS_FN = nn.L1Loss()
+
 OPTIMIZER = torch.optim.SGD(MODEL.parameters(), lr=1e-3)
