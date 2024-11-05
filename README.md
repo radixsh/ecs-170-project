@@ -78,6 +78,12 @@ OPTIMIZER = torch.optim.SGD(MODEL.parameters(), lr=1e-3)
 50x50x10x4: 2 hidden layers, of 50 and 10 units each, both ReLU()'d
 * Training time: INFO:main:Finished overall in 250.18 seconds
 * Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.214894094788935
+Conclusion: 2 hidden layers is better than 1
+
+50x50x10x4: 2 hidden layers, of 50 and 10 units each, no ReLU()
+* Training time: INFO:main:Finished overall in 245.14 seconds
+* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.4624589592027477
+Conclusion: ReLU helps
 
 
 # Resources
