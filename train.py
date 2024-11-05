@@ -5,7 +5,6 @@ import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
-# from sklearn.metrics import r2_score
 
 from generate_data import generate_data
 from env import SAMPLE_SIZE, TRAINING_SIZE, TEST_SIZE, RUNS, EPOCHS, DISTRIBUTION_TYPES
@@ -58,17 +57,11 @@ def test(dataloader, model, loss_fn, device):
             pred = model(X)
             logger.debug(f"pred: \t{pred}")
             logger.debug(f"y: \t\t{y}")
-            # guesses.append(pred)
-            # actuals.append(y)
 
             test_loss += loss_fn(pred, y).item()
             logger.debug(f"loss: \t{loss_fn(pred,y)}")
 
     test_loss /= num_batches
-    # logger.debug(f'guesses: \n{pformat(guesses)}')
-    # logger.debug(f'actuals: \n{pformat(actuals)}')
-    # r2 = r2_score(actuals, guesses)
-
     logging.info(f"Avg loss: {test_loss:>8f}")
 
 def main():
@@ -84,12 +77,11 @@ def main():
     logger.debug(f'device: {device}')
 
     model = nn.Sequential(
-            # out_features should be len(DISTRIBUTION_TYPES) + 2, for mean and
-            # stddev
             nn.Linear(in_features=SAMPLE_SIZE, out_features=32),
             nn.ReLU(),
-            nn.Linear(in_features=32, out_features=len(DISTRIBUTION_TYPES)+2),
-            )
+            # out_features should be len(DISTRIBUTION_TYPES) + 2, for the one
+            # hot vector for distribution type, plus mean and stddev
+            nn.Linear(in_features=32, out_features=len(DISTRIBUTION_TYPES)+2))
     logger.debug(model)
 
     loss_fn = nn.MSELoss()
@@ -101,10 +93,9 @@ def main():
         # Samples: a flat array of SAMPLE_SIZE points from a distribution
         # Labels: an array whose first n entries are a one-hot array to identify
         # distribution type, and whose last 2 entries are mean and stddev
-        # E.g., [0 1 3.5 1.2] indicates that it's an Exponential distribution with
+        # For example, [0 1 3.5 1.2] indicates an Exponential distribution with
         # mean=3.5 and stddev=1.2
         raw_training_data = generate_data(count=TRAINING_SIZE, sample_size=SAMPLE_SIZE)
-        # logger.debug(f'raw_training_data: \n{pformat(raw_training_data)}')
         training_samples = np.array([elem[0] for elem in raw_training_data])
         training_labels = np.array([elem[1] for elem in raw_training_data])
         training_dataset = MyDataset(training_samples, training_labels)
