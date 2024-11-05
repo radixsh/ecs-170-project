@@ -21,9 +21,11 @@ DISTRIBUTION_TYPES = ["exponential", "normal"]
 MODEL = nn.Sequential(
         nn.Linear(in_features=SAMPLE_SIZE, out_features=SAMPLE_SIZE),
         nn.ReLU(),
+        nn.Linear(in_features=SAMPLE_SIZE, out_features=10),
+        nn.ReLU(),
         # out_features should be len(DISTRIBUTION_TYPES) + 2, for the one
         # hot vector for distribution type, plus mean and stddev
-        nn.Linear(in_features=SAMPLE_SIZE, out_features=len(DISTRIBUTION_TYPES)+2))
+        nn.Linear(in_features=10, out_features=len(DISTRIBUTION_TYPES)+2))
 
 DEVICE = (
     "cuda"
