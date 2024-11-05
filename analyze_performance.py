@@ -7,7 +7,7 @@ from pprint import pformat
 
 from train import MyDataset
 from generate_data import generate_data
-from env import DISTRIBUTION_TYPES, SAMPLE_SIZE, TEST_SIZE
+from env import DISTRIBUTION_TYPES, SAMPLE_SIZE, TEST_SIZE, MODEL, LOSS_FN, DEVICE
 
 logger = logging.getLogger("meta")
 logger.setLevel(logging.DEBUG)
@@ -37,24 +37,9 @@ def test(dataloader, model, loss_fn, device):
     logger.info(f"Avg loss: {test_loss:>8f}")
 
 def main():
-    device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-
-    loss_fn = nn.MSELoss()
-
     # Load existing model, and run it for TEST_SIZE tests
-    model = nn.Sequential(
-            nn.Linear(in_features=SAMPLE_SIZE, out_features=32),
-            nn.ReLU(),
-            nn.Linear(in_features=32, out_features=len(DISTRIBUTION_TYPES)+2),
-            )
     weights_path = 'model_weights.pth'
-    model.load_state_dict(torch.load(weights_path))
+    MODEL.load_state_dict(torch.load(weights_path))
 
     raw_test_data = generate_data(count=TEST_SIZE, sample_size=SAMPLE_SIZE)
     test_samples = np.array([elem[0] for elem in raw_test_data])
@@ -64,7 +49,7 @@ def main():
 
     # Run it on a slightly modified test() function in this file (the only
     # difference is that it gives more verbose logging)
-    test(test_dataloader, model, loss_fn, device)
+    test(test_dataloader, MODEL, LOSS_FN, DEVICE)
 
 if __name__ == "__main__":
     main()

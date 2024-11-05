@@ -7,7 +7,7 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 
 from generate_data import generate_data
-from env import SAMPLE_SIZE, TRAINING_SIZE, TEST_SIZE, RUNS, EPOCHS, DISTRIBUTION_TYPES
+from env import *
 
 logger = logging.getLogger("main")
 logging.basicConfig(level=logging.INFO)
@@ -62,30 +62,12 @@ def test(dataloader, model, loss_fn, device):
             logger.debug(f"loss: \t{loss_fn(pred,y)}")
 
     test_loss /= num_batches
-    logging.info(f"Avg loss: {test_loss:>8f}")
+    logger.info(f"Avg loss: {test_loss:>8f}")
 
 def main():
     start = time.time()
 
-    device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-    logger.debug(f'device: {device}')
-
-    model = nn.Sequential(
-            nn.Linear(in_features=SAMPLE_SIZE, out_features=32),
-            nn.ReLU(),
-            # out_features should be len(DISTRIBUTION_TYPES) + 2, for the one
-            # hot vector for distribution type, plus mean and stddev
-            nn.Linear(in_features=32, out_features=len(DISTRIBUTION_TYPES)+2))
-    logger.debug(model)
-
-    loss_fn = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    logger.debug(MODEL)
 
     for r in range(RUNS):
         run_start = time.time()
@@ -109,16 +91,16 @@ def main():
 
         for t in range(EPOCHS):
             logger.debug(f"\nEpoch {t+1}\n-------------------------------")
-            train(training_dataloader, model, loss_fn, optimizer, device)
-            test(test_dataloader, model, loss_fn, device)
+            train(training_dataloader, MODEL, LOSS_FN, OPTIMIZER, DEVICE)
+            test(test_dataloader, MODEL, LOSS_FN, DEVICE)
         run_end = time.time()
-        logging.info(f"Finished run {r + 1} of {RUNS} in " +
+        logger.info(f"Finished run {r + 1} of {RUNS} in " +
                      f"{run_end - run_start:.2f} seconds")
 
     end = time.time()
-    logging.info(f"Finished overall in {end - start:.2f} seconds")
+    logger.info(f"Finished overall in {end - start:.2f} seconds")
 
-    torch.save(model.state_dict(), 'model_weights.pth')
+    torch.save(MODEL.state_dict(), 'model_weights.pth')
 
 if __name__ == "__main__":
     main()
