@@ -85,6 +85,11 @@ Conclusion: 2 hidden layers is better than 1
 * Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.4624589592027477
 Conclusion: ReLU helps
 
+50x25x10x4: 2 hidden layers, of 50 and 10 units each, with ReLU() in between each layer
+* Training time: IINFO:main:Finished run 10 of 10 in 13.06 seconds
+* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.237162
+Conclusion: ReLU helps
+
 
 # Resources
 * https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html
