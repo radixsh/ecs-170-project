@@ -12,3 +12,4 @@ sympy==1.13.3
 threadpoolctl==3.5.0
 torch==2.2.2
 typing_extensions==4.12.2
+matplotlib==3.9.2
