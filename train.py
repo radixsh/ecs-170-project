@@ -8,11 +8,10 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
 
 from generate_data import generate_data
-from loss_fn import *
 from env import *
 
-logger = logging.getLogger("main")
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class MyDataset(Dataset):
     def __init__(self, data, labels):
@@ -71,6 +70,7 @@ def main():
     start = time.time()
 
     logger.debug(MODEL)
+    logger.debug(DEVICE)
 
     for r in range(RUNS):
         run_start = time.time()
@@ -80,16 +80,20 @@ def main():
         samples = np.array([elem[0] for elem in raw_data])
         labels = np.array([elem[1] for elem in raw_data])
 
-        # Split the data set into training and validation sets
-        # Here we are doing 10-fold cross validation
-        # The entire dataset is randomly divided into 10 equal (or nearly equal) subsets (folds)
-        # Each fold is used exactly once as a validation while the k - 1 remaining folds form the training set
-        # This reduces bias, gives our model more data to train on, and helps us evaluate our model's performance
+        # Split the data set into training and validation sets for
+        # NUM_SPLITS-fold cross-validation.
+        # The entire dataset is randomly divided into NUM_SPLITS equal subsets
+        # (folds), each of which is used exactly once as validation while the
+        # k - 1 remaining folds form the training set.
+        # This reduces bias, gives our model more data to train on, and helps us
+        # evaluate our model's performance.
         kf = KFold(n_splits=NUM_SPLITS, shuffle=True, random_state=42)
         for epoch in range(EPOCHS):
+            logging.info(f"\nEpoch {epoch + 1}\n-------------------------------")
+
             for fold, (train_index, val_index) in enumerate(kf.split(samples)):
-                
-                logging.debug(f"Fold {fold+1}")
+                logging.info(f"Fold {fold + 1}")
+
                 training_samples, validation_samples = samples[train_index], samples[val_index]
                 training_labels, validation_labels = labels[train_index], labels[val_index]
 
@@ -98,14 +102,11 @@ def main():
                 validation_dataset = MyDataset(validation_samples, validation_labels)
                 validation_dataloader = DataLoader(validation_dataset)
 
-                logging.debug(f"\nEpoch {epoch+1}\n-------------------------------")
+                # Train the model on the training data, and cross-validate
                 train(training_dataloader, MODEL, LOSS_FN, OPTIMIZER, DEVICE)
                 test(validation_dataloader, MODEL, LOSS_FN, DEVICE)
 
-        end = time.time()
-        logging.info(f"Finished overall in {end - start:.2f} seconds")
-
-        # Here we are testing the model on the test data
+        # Test the model on the test data
         raw_test_data = generate_data(count=TEST_SIZE, sample_size=SAMPLE_SIZE)
         test_samples = np.array([elem[0] for elem in raw_test_data])
         test_labels = np.array([elem[1] for elem in raw_test_data])
@@ -116,25 +117,6 @@ def main():
         run_end = time.time()
         logger.info(f"Finished run {r + 1} of {RUNS} in " +
                      f"{run_end - run_start:.2f} seconds")
-
-        '''
-        # Samples: a flat array of SAMPLE_SIZE points from a distribution
-        # Labels: an array whose first n entries are a one-hot array to identify
-        # distribution type, and whose last 2 entries are mean and stddev
-        # For example, [0 1 3.5 1.2] indicates an Exponential distribution with
-        # mean=3.5 and stddev=1.2
-        raw_training_data = generate_data(count=TRAINING_SIZE, sample_size=SAMPLE_SIZE)
-        training_samples = np.array([elem[0] for elem in raw_training_data])
-        training_labels = np.array([elem[1] for elem in raw_training_data])
-        training_dataset = MyDataset(training_samples, training_labels)
-        training_dataloader = DataLoader(training_dataset)
-
-        raw_test_data = generate_data(count=TEST_SIZE, sample_size=SAMPLE_SIZE)
-        test_samples = np.array([elem[0] for elem in raw_test_data])
-        test_labels = np.array([elem[1] for elem in raw_test_data])
-        test_dataset = MyDataset(test_samples, test_labels)
-        test_dataloader = DataLoader(test_dataset)
-        '''
 
     end = time.time()
     logger.info(f"Finished overall in {end - start:.2f} seconds")

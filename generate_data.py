@@ -4,8 +4,8 @@ from pprint import pformat
 
 from env import DISTRIBUTION_TYPES
 
-logger_gen = logging.getLogger("generate_data")
-logger_gen.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 def exponential(sample_size):
     rng = np.random.default_rng()
@@ -59,7 +59,7 @@ def generate_data(count, sample_size):
                 data_piece = exponential(sample_size)
             elif dist == 'normal':
                 data_piece = normal(sample_size)
-            logger_gen.debug(f'data_piece: \n{pformat(data_piece)}\n')
+            logger.debug(f'data_piece: \n{pformat(data_piece)}\n')
             data.append(data_piece)
 
     return data
