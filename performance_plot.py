@@ -29,15 +29,17 @@ avg_losses = [
 plt.figure(figsize=(12, 6))
 
 plt.subplot(1, 2, 1)
-plt.barh(architectures, training_times, color='lightblue')
-plt.xlabel('Training Time (seconds)')
+plt.bar(architectures, training_times, color='lightblue')
+plt.ylabel('Training Time (seconds)')
 plt.title('Training Time for Different Model Architectures')
+plt.xticks(rotation=-30)
 
 # average loss
 plt.subplot(1, 2, 2)
-plt.barh(architectures, avg_losses, color='sandybrown')
-plt.xlabel('Average Loss')
+plt.bar(architectures, avg_losses, color='sandybrown')
+plt.ylabel('Average Loss')
 plt.title('Average Loss for Different Model Architectures')
+plt.xticks(rotation=-30)
 
 plt.tight_layout()
 plt.show()
