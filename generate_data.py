@@ -7,7 +7,7 @@ from env import DISTRIBUTION_TYPES
 logger_gen = logging.getLogger("generate_data")
 logger_gen.setLevel(logging.INFO)
 
-def exponential(sample_size) -> (list, list):
+def exponential(sample_size):
     rng = np.random.default_rng()
 
     # Draw from Rayleigh distribution with sigma=1
@@ -22,7 +22,7 @@ def exponential(sample_size) -> (list, list):
 
     return (sample_data, labels)
 
-def normal(sample_size) -> (list, list):
+def normal(sample_size):
     rng = np.random.default_rng()
 
     # numpy.random.Generator.uniform() gives a value in [0.0, 1.0),

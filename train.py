@@ -8,6 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
 
 from generate_data import generate_data
+from loss_fn import *
 from env import *
 
 logger = logging.getLogger("main")
@@ -29,11 +30,12 @@ class MyDataset(Dataset):
 # https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html
 def train(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
+    model = model.to(device)        # For GPU use
     model.train()
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device).float(), y.to(device).float()
 
-        pred = model(X)             # Forward pass
+        pred = model(X.to(device))  # Forward pass
         loss = loss_fn(pred, y)     # Compute loss (prediction error)
         loss.backward()             # Backpropagation
         optimizer.step()
@@ -55,7 +57,7 @@ def test(dataloader, model, loss_fn, device):
         for X, y in dataloader:
             X, y = X.to(device).float(), y.to(device).float()
 
-            pred = model(X)
+            pred = model(X.to(device))
             logger.debug(f"pred: \t{pred}")
             logger.debug(f"y: \t\t{y}")
 
@@ -83,23 +85,25 @@ def main():
         # The entire dataset is randomly divided into 10 equal (or nearly equal) subsets (folds)
         # Each fold is used exactly once as a validation while the k - 1 remaining folds form the training set
         # This reduces bias, gives our model more data to train on, and helps us evaluate our model's performance
-        kf = KFold(n_splits=10, shuffle=True, random_state=42)
-
-        for fold, (train_index, val_index) in enumerate(kf.split(samples)):
-            logging.debug(f"Fold {fold + 1}")
-            training_samples, validation_samples = samples[train_index], samples[val_index]
-            training_labels, validation_labels = labels[train_index], labels[val_index]
-
-            training_dataset = MyDataset(training_samples, training_labels)
-            training_dataloader = DataLoader(training_dataset)
-            validation_dataset = MyDataset(validation_samples, validation_labels)
-            validation_dataloader = DataLoader(validation_dataset)
-
-        # Train the model on training data, and validate on validation data
+        kf = KFold(n_splits=NUM_SPLITS, shuffle=True, random_state=42)
         for epoch in range(EPOCHS):
-            logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
-            train(training_dataloader, MODEL, LOSS_FN, OPTIMIZER, DEVICE)
-            test(validation_dataloader, MODEL, LOSS_FN, DEVICE)
+            for fold, (train_index, val_index) in enumerate(kf.split(samples)):
+                
+                logging.debug(f"Fold {fold+1}")
+                training_samples, validation_samples = samples[train_index], samples[val_index]
+                training_labels, validation_labels = labels[train_index], labels[val_index]
+
+                training_dataset = MyDataset(training_samples, training_labels)
+                training_dataloader = DataLoader(training_dataset)
+                validation_dataset = MyDataset(validation_samples, validation_labels)
+                validation_dataloader = DataLoader(validation_dataset)
+
+                logging.debug(f"\nEpoch {epoch+1}\n-------------------------------")
+                train(training_dataloader, MODEL, LOSS_FN, OPTIMIZER, DEVICE)
+                test(validation_dataloader, MODEL, LOSS_FN, DEVICE)
+
+        end = time.time()
+        logging.info(f"Finished overall in {end - start:.2f} seconds")
 
         # Here we are testing the model on the test data
         raw_test_data = generate_data(count=TEST_SIZE, sample_size=SAMPLE_SIZE)

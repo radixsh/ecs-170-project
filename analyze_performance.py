@@ -15,6 +15,7 @@ logger.setLevel(logging.INFO)
 def test(dataloader, model, loss_fn, device):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
+    model = model.to(device)
     model.eval()
     test_loss = 0
 
@@ -24,7 +25,7 @@ def test(dataloader, model, loss_fn, device):
         for X, y in dataloader:
             X, y = X.to(device).float(), y.to(device).float()
 
-            pred = model(X)
+            pred = model(X.to(device))
             logger.debug(f"predicted: \t{pred}")
             logger.debug(f"actual: \t{y}")
             guesses.append(pred)
@@ -41,7 +42,6 @@ def main():
     weights_path = 'model_weights.pth'
     MODEL.load_state_dict(torch.load(weights_path))
 
-    LOSS_FN = nn.L1Loss()
     avg_loss = 0
     tests = 20
     for _ in range(tests):
