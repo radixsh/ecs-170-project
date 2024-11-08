@@ -1,9 +1,7 @@
 import time
 import logging
-from pprint import pformat
 import numpy as np
 import torch
-from torch import nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
 
@@ -12,6 +10,8 @@ from env import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+logger.addHandler(console_handler)
 
 class MyDataset(Dataset):
     def __init__(self, data, labels):
@@ -26,7 +26,6 @@ class MyDataset(Dataset):
         label = self.labels[index]
         return sample, label
 
-# https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html
 def train(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
     model = model.to(device)        # For GPU use
@@ -34,7 +33,7 @@ def train(dataloader, model, loss_fn, optimizer, device):
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device).float(), y.to(device).float()
 
-        pred = model(X.to(device))  # Forward pass
+        pred = model(X)             # Forward pass
         loss = loss_fn(pred, y)     # Compute loss (prediction error)
         loss.backward()             # Backpropagation
         optimizer.step()
@@ -44,8 +43,7 @@ def train(dataloader, model, loss_fn, optimizer, device):
             loss, current = loss.item(), (batch + 1) * len(X)
             logger.debug(f"Loss after training: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
-def test(dataloader, model, loss_fn, device):
-    size = len(dataloader.dataset)
+def test(dataloader, model, loss_fn, device) -> float:
     num_batches = len(dataloader)
     model.eval()
     test_loss = 0
@@ -56,7 +54,7 @@ def test(dataloader, model, loss_fn, device):
         for X, y in dataloader:
             X, y = X.to(device).float(), y.to(device).float()
 
-            pred = model(X.to(device))
+            pred = model(X)
             logger.debug(f"pred: \t{pred}")
             logger.debug(f"y: \t\t{y}")
 
@@ -64,7 +62,7 @@ def test(dataloader, model, loss_fn, device):
             logger.debug(f"loss: \t{loss_fn(pred,y)}")
 
     test_loss /= num_batches
-    logger.info(f"Avg loss: {test_loss:>8f}")
+    return test_loss
 
 def main():
     start = time.time()
@@ -89,11 +87,7 @@ def main():
         # evaluate our model's performance.
         kf = KFold(n_splits=NUM_SPLITS, shuffle=True, random_state=42)
         for epoch in range(EPOCHS):
-            logging.info(f"\nEpoch {epoch + 1}\n-------------------------------")
-
             for fold, (train_index, val_index) in enumerate(kf.split(samples)):
-                logging.info(f"Fold {fold + 1}")
-
                 training_samples, validation_samples = samples[train_index], samples[val_index]
                 training_labels, validation_labels = labels[train_index], labels[val_index]
 
@@ -104,7 +98,9 @@ def main():
 
                 # Train the model on the training data, and cross-validate
                 train(training_dataloader, MODEL, LOSS_FN, OPTIMIZER, DEVICE)
-                test(validation_dataloader, MODEL, LOSS_FN, DEVICE)
+                loss = test(validation_dataloader, MODEL, LOSS_FN, DEVICE)
+                logger.info(f"Epoch {epoch + 1}\tFold {fold + 1}\t"
+                            f"Avg loss (cross-validation phase): {loss}")
 
         # Test the model on the test data
         raw_test_data = generate_data(count=TEST_SIZE, sample_size=SAMPLE_SIZE)
@@ -112,7 +108,8 @@ def main():
         test_labels = np.array([elem[1] for elem in raw_test_data])
         test_dataset = MyDataset(test_samples, test_labels)
         test_dataloader = DataLoader(test_dataset)
-        test(test_dataloader, MODEL, LOSS_FN, DEVICE)
+        loss = test(test_dataloader, MODEL, LOSS_FN, DEVICE)
+        logger.info(f"Avg loss (test phase): {loss}")
 
         run_end = time.time()
         logger.info(f"Finished run {r + 1} of {RUNS} in " +
