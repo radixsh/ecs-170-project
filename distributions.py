@@ -12,11 +12,10 @@ def generate_mean():
     sign = rng.choice([-1, 1])
     return rng.uniform() * sign * env.MEAN_SCALE
 
-# Returns a random positive value according to a normal Rayleigh distribution
+# Returns a random positive value according to the function x*exp(-x)
 # Mean return is 1
 def generate_stddev():
-    return rng.rayleigh(scale=1)
-
+    return rng.gamma(2,scale=1)
 # Returns a uniformly random value in (0,1]
 def generate_pos_mean():
     return (1 - rng.uniform()) * env.MEAN_SCALE
@@ -36,7 +35,6 @@ def names_to_vector(dist_names):
 ## SUPPORT = R
 
 def normal_dist():
-    #TODO FIXULATE
     mean = generate_mean()
     stddev = generate_stddev()
     labels = [0,0,0,0,0,0,1,0,0,mean,stddev]
@@ -108,6 +106,7 @@ def rayleigh_dist():
 
 def beta_dist():
     # need a mean in (0,1) and a stddev in (0, mean - mean^2)
+    # Possibly write this differently
     mean = (generate_mean() / env.MEAN_SCALE + 1) / 2
     stddev = ((generate_mean() / env.MEAN_SCALE + 1) / 2) * (mean - mean ** 2)
     labels = [1,0,0,0,0,0,0,0,0,mean,stddev]
@@ -127,7 +126,7 @@ def gamma_dist():
     k = (mean / stddev) ** 2
     theta = (stddev ** 2) / mean
 
-    sample_data = rng.gamma(k, theta, )
+    sample_data = rng.gamma(k, theta, env.SAMPLE_SIZE)
     return (sample_data, labels)
 
 def wald_dist():

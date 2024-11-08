@@ -8,6 +8,8 @@ from env import DISTRIBUTION_TYPES
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+'''
+# Legacy distribution implementations
 def exponential(sample_size):
     rng = np.random.default_rng()
 
@@ -42,7 +44,6 @@ def normal(sample_size):
     return (sample_data, labels)
 
 
-'''
 Generate a dataset where each piece of data is an ordered pair:
     (set of random sampled points from the distribution,
      distribution type and parameters)
@@ -59,7 +60,8 @@ def generate_data(count):
             # Avoid giant if statement, almost definitely slower
             exec("data_piece = " + dist + "_dist()")
             exec("data.append(data_piece)")
-            #data_piece = normal_dist()
+            # Legacy implementation
+            # data_piece = normal_dist()
             # if dist == 'exponential':
             #     data_piece = exponential(sample_size)
             # elif dist == 'normal':
