@@ -19,7 +19,7 @@ def main():
     avg_loss = 0
     tests = 20
     for _ in range(tests):
-        raw_test_data = generate_data(count=TEST_SIZE, sample_size=SAMPLE_SIZE)
+        raw_test_data = generate_data(count=TEST_SIZE)
         test_samples = np.array([elem[0] for elem in raw_test_data])
         test_labels = np.array([elem[1] for elem in raw_test_data])
         test_dataset = MyDataset(test_samples, test_labels)
