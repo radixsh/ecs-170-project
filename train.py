@@ -77,7 +77,7 @@ def main():
     
     start = time.time()
 
-    for r in range(RUNS):
+    for run in range(RUNS):
         # rebuild model and optimizer each run
         model = build_model(INPUT_SIZE, OUTPUT_SIZE).to(DEVICE)
         optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
@@ -122,7 +122,7 @@ def main():
         logger.info(f"Avg loss (testing): {loss}")
 
         run_end = time.time()
-        logger.info(f"Finished run {r + 1} of {RUNS} in " +
+        logger.info(f"Finished run {run + 1} of {RUNS} in " +
                      f"{run_end - run_start:.2f} seconds")
 
     end = time.time()

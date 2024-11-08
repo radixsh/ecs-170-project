@@ -1,7 +1,6 @@
 import torch.nn as nn
 
 def build_model(input_size, output_size):
-    # Model architecture; do not chance first in_features or last out_features
     model = nn.Sequential(
         nn.Linear(in_features=input_size, out_features=input_size),
         nn.ReLU(),
