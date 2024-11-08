@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
 
+from build_model import build_model
 from generate_data import generate_data
 from env import *
 
@@ -68,12 +69,18 @@ def test(dataloader, model, loss_fn, device):
     return test_loss
 
 def main():
+    # consistent initialization
+    torch.manual_seed(42)
+    np.random.seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(42)
+    
     start = time.time()
 
-    logger.debug(MODEL)
-    logger.debug(DEVICE)
-
     for r in range(RUNS):
+        # rebuild model and optimizer each run
+        model = build_model(INPUT_SIZE, OUTPUT_SIZE).to(DEVICE)
+        optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
         run_start = time.time()
 
         # Generate the entire dataset first
@@ -100,8 +107,8 @@ def main():
                 validation_dataloader = DataLoader(validation_dataset)
 
                 # Train the model on the training data, and cross-validate
-                train(training_dataloader, MODEL, LOSS_FN, OPTIMIZER, DEVICE)
-                loss = test(validation_dataloader, MODEL, LOSS_FN, DEVICE)
+                train(training_dataloader, model, LOSS_FN, optimizer, DEVICE)
+                loss = test(validation_dataloader, model, LOSS_FN, DEVICE)
                 logger.info(f"Epoch {epoch + 1}\tFold {fold + 1}\t"
                             f"Avg loss (cross-validation phase): {loss}")
 
@@ -111,7 +118,7 @@ def main():
         test_labels = np.array([elem[1] for elem in raw_test_data])
         test_dataset = MyDataset(test_samples, test_labels)
         test_dataloader = DataLoader(test_dataset)
-        loss = test(test_dataloader, MODEL, LOSS_FN, DEVICE)
+        loss = test(test_dataloader, model, LOSS_FN, DEVICE)
         logger.info(f"Avg loss (testing): {loss}")
 
         run_end = time.time()
@@ -121,7 +128,7 @@ def main():
     end = time.time()
     logger.info(f"Finished {RUNS} runs in {end - start:.2f} seconds")
 
-    torch.save(MODEL.state_dict(), 'model_weights.pth')
+    torch.save(model.state_dict(), 'model_weights.pth')
 
 if __name__ == "__main__":
     main()

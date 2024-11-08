@@ -2,9 +2,9 @@ import torch
 from torch import nn
 from loss_fn import *
 
-TRAINING_SIZE = 1000    # How many (data points, labels) examples to train on
-#TEST_SIZE = int(TRAINING_SIZE * 0.2 / 0.8) # 20% of (training + test)
-TEST_SIZE = TRAINING_SIZE # Equal to training size since we can generate arbitrary amounts of data
+# Training constants
+TRAINING_SIZE = 800    # How many (data points, labels) examples to train on
+TEST_SIZE = 200 # Equal to training size since we can generate arbitrary amounts of data
 SAMPLE_SIZE = 30        # How many data points should be shown to the network
 NUM_SPLITS = 2 # Less is more for large datasets, but potentially play with this   
 EPOCHS = 5              # How many times to repeat the training process per generated dataset
@@ -24,17 +24,8 @@ NUM_DISTS = len(DISTRIBUTION_TYPES)
 MEAN_SCALE = 10 # Scale of means for data
 
 NUM_DIMENSIONS = 1      # How many dimensions of data we're currently working with
-
-# Model architecture; do not chance first in_features or last out_features
-MODEL = nn.Sequential(
-        nn.Linear(in_features=SAMPLE_SIZE*NUM_DIMENSIONS, out_features=SAMPLE_SIZE*NUM_DIMENSIONS),
-        nn.ReLU(),
-        nn.Linear(in_features=SAMPLE_SIZE*NUM_DIMENSIONS, out_features=30),
-        nn.ReLU(),
-        nn.Linear(in_features=30, out_features=30),
-        nn.ReLU(),
-        # for each dimension, n distribution types + mean + stddev
-        nn.Linear(in_features=30, out_features=(len(DISTRIBUTION_TYPES)+2)*NUM_DIMENSIONS))
+INPUT_SIZE = SAMPLE_SIZE*NUM_DIMENSIONS
+OUTPUT_SIZE = (len(DISTRIBUTION_TYPES)+2)*NUM_DIMENSIONS
 
 DEVICE = (
         # "cuda"        # Use with large networks and good GPU; requires special torch install
@@ -47,7 +38,7 @@ DEVICE = (
 
 LOSS_FN = CustomLoss()  # Custom loss function defined in loss_fn.py
 LEARNING_RATE = 1e-3    # Learning rate, for optimizer
-OPTIMIZER = torch.optim.SGD(MODEL.parameters(), lr=LEARNING_RATE, foreach=True)
+
 
 SFP = 0.99  # "Support fail penalty": the amount to add to loss when the network
             # TOTALLY guessues wrong for distribution type. This is going away
