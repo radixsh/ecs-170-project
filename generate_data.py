@@ -1,39 +1,14 @@
 import numpy as np
 import logging
 from pprint import pformat
+from distributions import *
 
-logger = logging.getLogger("generate_data")
-logging.basicConfig(level=logging.INFO)
+from env import DISTRIBUTION_TYPES
 
-# Define a canonical ordering
-DISTRIBUTION_TYPES = ["binomial", "exponential", "normal"]
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-# Get a tuple for our training dataset: (data points, labels)
-def binomial(sample_size) -> (list, list):
-    rng = np.random.default_rng()
-
-    # Generate n from Rayleigh distribution (smooth Poisson distribution),
-    # similarly to how we generated stddev for normal distributions
-    n = np.ceil(rng.rayleigh(scale=100.0))
-
-    # Generate p uniformly from [0.0, 1.0)
-    p = rng.uniform(low=0.0, high=1.0)
-
-    # The first n entries are a one-hot indicator of distribution type,
-    # following the canonical ordering of DISTRIBUTION_TYPES, while the last 2
-    # entries are mean and standard deviation.
-    # (Include mean and stddev to give us a unified way to compare dists:
-    # https://en.wikipedia.org/wiki/Binomial_distribution)
-    mean = n * p
-    stddev = np.sqrt(n * p * (1 - p))
-    labels = [1, 0, 0, mean, stddev]
-
-    # Sample from the binomial distribution specified by n and p
-    sample_data = rng.binomial(n, p, sample_size)
-
-    return (sample_data, labels)
-
-def exponential(sample_size) -> (list, list):
+def exponential(sample_size):
     rng = np.random.default_rng()
 
     # Draw from Rayleigh distribution with sigma=1
@@ -48,7 +23,7 @@ def exponential(sample_size) -> (list, list):
 
     return (sample_data, labels)
 
-def normal(sample_size) -> (list, list):
+def normal(sample_size):
     rng = np.random.default_rng()
 
     # numpy.random.Generator.uniform() gives a value in [0.0, 1.0),
@@ -76,18 +51,20 @@ Parameters:
 `count`: size of dataset (number of trials)
 `sample_size`: number of points we will show the AI network for each trial
 '''
-def generate_data(count, sample_size):
+def generate_data(count):
     data = []
 
     for _ in range(count):
         for dist in DISTRIBUTION_TYPES:
-            if dist == 'binomial':
-                data_piece = binomial(sample_size)
-            elif dist == 'exponential':
-                data_piece = exponential(sample_size)
-            elif dist == 'normal':
-                data_piece = normal(sample_size)
-            logger.debug(f'data_piece: \n{pformat(data_piece)}\n')
-            data.append(data_piece)
+            # Avoid giant if statement, almost definitely slower
+            exec("data_piece = " + dist + "_dist()")
+            exec("data.append(data_piece)")
+            #data_piece = normal_dist()
+            # if dist == 'exponential':
+            #     data_piece = exponential(sample_size)
+            # elif dist == 'normal':
+            #     data_piece = normal(sample_size)
+            #logger.debug(f'data_piece: \n{pformat(data_piece)}\n')
+            #data.append(data_piece)
 
     return data
