@@ -109,14 +109,14 @@ def main():
         test_dataset = MyDataset(test_samples, test_labels)
         test_dataloader = DataLoader(test_dataset)
         loss = test(test_dataloader, MODEL, LOSS_FN, DEVICE)
-        logger.info(f"Avg loss (test phase): {loss}")
+        logger.info(f"Avg loss (testing): {loss}")
 
         run_end = time.time()
         logger.info(f"Finished run {r + 1} of {RUNS} in " +
                      f"{run_end - run_start:.2f} seconds")
 
     end = time.time()
-    logger.info(f"Finished overall in {end - start:.2f} seconds")
+    logger.info(f"Finished {RUNS} runs in {end - start:.2f} seconds")
 
     torch.save(MODEL.state_dict(), 'model_weights.pth')
 
