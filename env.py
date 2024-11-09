@@ -1,28 +1,4 @@
-from distributions import (
-    beta_dist,
-    gamma_dist,
-    gumbel_dist,
-    laplace_dist,
-    logistic_dist,
-    lognormal_dist,
-    normal_dist,
-    rayleigh_dist,
-    wald_dist,
-)
-
-# Define a canonical ordering (from generate_data.py on main branch)
-DISTRIBUTION_FUNCTIONS = {
-    "beta": beta_dist,
-    "gamma": gamma_dist,
-    "gumbel": gumbel_dist,
-    "laplace": laplace_dist,
-    "logistic": logistic_dist,
-    "lognormal": lognormal_dist,
-    "normal": normal_dist,
-    "rayleigh": rayleigh_dist,
-    "wald": wald_dist,
-}
-
+from distributions import DISTRIBUTION_FUNCTIONS
 # Training constants
 TRAINING_SIZE = 800    # How many (data points, labels) examples to train on
 TEST_SIZE = TRAINING_SIZE # Equal to training size since we can generate arbitrary amounts of data

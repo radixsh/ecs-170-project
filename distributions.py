@@ -22,7 +22,7 @@ def generate_pos_mean():
 
 def names_to_vector(dist_names):
     # Get the list of distribution names to determine vector size and index mapping
-    dist_types = list(env.DISTRIBUTION_FUNCTIONS.keys())
+    dist_types = list(DISTRIBUTION_FUNCTIONS.keys())
     out = []
     
     # Loop through the names given, creating a one-hot vector for each
@@ -148,3 +148,16 @@ def wald_dist():
 
     sample_data = rng.wald(mean, lam, env.SAMPLE_SIZE)
     return (sample_data, labels)
+
+# Define a canonical ordering (from generate_data.py on main branch)
+DISTRIBUTION_FUNCTIONS = {
+    "beta": beta_dist,
+    "gamma": gamma_dist,
+    "gumbel": gumbel_dist,
+    "laplace": laplace_dist,
+    "logistic": logistic_dist,
+    "lognormal": lognormal_dist,
+    "normal": normal_dist,
+    "rayleigh": rayleigh_dist,
+    "wald": wald_dist,
+}
