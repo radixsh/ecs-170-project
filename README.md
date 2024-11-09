@@ -14,8 +14,16 @@ The architecture is as follows:
   distribution families, concatenated with the network's guesses for that
   dimension's mean and standard deviation)
 
-Next steps: take stock of current performance, generate some nice pretty graphs,
-move on to multivariate data analysis, move on to more types of distributions. 
+Next steps:
+[x] Move on to more types of distributions
+[ ] Train the model separately on different runs, and save only the best one to
+`model_weights.pth` (currently, it's saving the last run's weights, not the best
+one)
+[ ] Measure current performance, generate some nice pretty graphs
+[ ] Sanity-check the model's performance: For a few different queries, graph the
+samples provided to the model, and overlay both the model's guesses and the true
+distribution family, mean, and standard deviation
+[ ] Move on to multi-dimensional data
 
 ## Main useful files
 ### analyze_performance.py
@@ -46,7 +54,7 @@ PyTorch said it couldn't figure out what the loss function's `backward()` should
 be. (For context, the gradient function `backward()` (which is the partial
 derivative wrt output), is usually calculated automatically.)
 We may try to put this `softmax()` thing at the end of the model itself, perhaps
-as some sort of pseudo–activation function processing the model's output layer. 
+as some sort of pseudo–activation function processing the model's output layer.
 
 
 ### generate_data.py
