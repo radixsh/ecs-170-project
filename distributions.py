@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import mpmath
-import env
+import env 
 
 ### SEED THE RNG
 rng = np.random.default_rng()
@@ -20,16 +20,24 @@ def generate_stddev():
 def generate_pos_mean():
     return (1 - rng.uniform()) * env.MEAN_SCALE
 
-# Returns a vector corresponding to the types of distributions
 def names_to_vector(dist_names):
+    # Get the list of distribution names to determine vector size and index mapping
+    dist_types = list(env.DISTRIBUTION_FUNCTIONS.keys())
     out = []
-    # Loop through the names given, increment the index of the output vector 
-    # according to the index of DISTRIBUTION_TYPES
-    # then shove each one together
+    
+    # Loop through the names given, creating a one-hot vector for each
     for name in dist_names:
-        vec = [0]*len(env.DISTRIBUTION_TYPES)
-        vec[env.DISTRIBUTION_TYPES.index(name)] = 1
+        vec = [0] * len(dist_types)
+        
+        # Check if the name exists in distribution functions
+        if name in dist_types:
+            vec[dist_types.index(name)] = 1
+        else:
+            # Handle cases where `name` is not a valid distribution name
+            raise ValueError(f"Distribution name '{name}' not found in DISTRIBUTION_FUNCTIONS")
+        
         out.append(vec)
+    
     return out
 
 ## SUPPORT = R

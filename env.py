@@ -1,6 +1,18 @@
 import torch
 from torch import nn
 from loss_fn import *
+from generate_data import *
+from distributions import (
+    beta_dist,
+    gamma_dist,
+    gumbel_dist,
+    laplace_dist,
+    logistic_dist,
+    lognormal_dist,
+    normal_dist,
+    rayleigh_dist,
+    wald_dist,
+)
 
 # Training constants
 TRAINING_SIZE = 800    # How many (data points, labels) examples to train on
@@ -11,16 +23,19 @@ EPOCHS = 5              # How many times to repeat the training process per gene
 RUNS = 1000                # How many times to generate new data and train model on it
 
 # Define a canonical ordering (from generate_data.py on main branch)
-DISTRIBUTION_TYPES = ["beta", # [0,1]
-                      "gamma", # R+
-                      "gumbel", # R
-                      "laplace", # R
-                      "logistic", # R
-                      "lognormal", # R+
-                      "normal", # R
-                      "rayleigh", #R+
-                      "wald"] #R+
-NUM_DISTS = len(DISTRIBUTION_TYPES)
+DISTRIBUTION_FUNCTIONS = {
+    "beta": beta_dist,
+    "gamma": gamma_dist,
+    "gumbel": gumbel_dist,
+    "laplace": laplace_dist,
+    "logistic": logistic_dist,
+    "lognormal": lognormal_dist,
+    "normal": normal_dist,
+    "rayleigh": rayleigh_dist,
+    "wald": wald_dist,
+}
+
+NUM_DISTS = len(DISTRIBUTION_FUNCTIONS)
 MEAN_SCALE = 10 # Scale of means for data
 
 NUM_DIMENSIONS = 1      # How many dimensions of data we're currently working with
