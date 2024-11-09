@@ -28,7 +28,7 @@ class MyDataset(Dataset):
         label = self.labels[index]
         return sample, label
 
-def train(dataloader, model, loss_function, optimizer, device):
+def train_model(dataloader, model, loss_function, optimizer, device):
     size = len(dataloader.dataset)
     model = model.to(device)        # For GPU use
     model.train()
@@ -45,7 +45,7 @@ def train(dataloader, model, loss_function, optimizer, device):
             loss, current = loss.item(), (batch + 1) * len(X)
             logger.debug(f"Loss after training: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
-def test(dataloader, model, loss_function, device):
+def test_model(dataloader, model, loss_function, device):
     num_batches = len(dataloader)
     model.eval()
     test_loss = 0
@@ -109,8 +109,8 @@ def main():
                 validation_dataloader = DataLoader(validation_dataset)
 
                 # Train the model on the training data, and cross-validate
-                train(training_dataloader, model, loss_function, optimizer, DEVICE)
-                loss = test(validation_dataloader, model, loss_function, DEVICE)
+                train_model(training_dataloader, model, loss_function, optimizer, DEVICE)
+                loss = test_model(validation_dataloader, model, loss_function, DEVICE)
                 logger.info(f"Epoch {epoch + 1}\tFold {fold + 1}\t"
                             f"Avg loss (cross-validation phase): {loss}")
 
@@ -120,7 +120,7 @@ def main():
         test_labels = np.array([elem[1] for elem in raw_test_data])
         test_dataset = MyDataset(test_samples, test_labels)
         test_dataloader = DataLoader(test_dataset)
-        loss = test(test_dataloader, model, loss_function, DEVICE)
+        loss = test_model(test_dataloader, model, loss_function, DEVICE)
         logger.info(f"Avg loss (testing): {loss}")
 
         run_end = time.time()
