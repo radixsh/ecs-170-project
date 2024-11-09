@@ -79,7 +79,7 @@ def main():
 
     for run in range(RUNS):
         # rebuild model and optimizer each run
-        model = build_model().to(DEVICE)
+        model = build_model(INPUT_SIZE, OUTPUT_SIZE).to(DEVICE)
         optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
         run_start = time.time()
 

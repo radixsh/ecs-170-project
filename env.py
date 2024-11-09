@@ -13,6 +13,7 @@ from distributions import (
     rayleigh_dist,
     wald_dist,
 )
+
 # Define a canonical ordering (from generate_data.py on main branch)
 DISTRIBUTION_FUNCTIONS = {
     "beta": beta_dist,
@@ -38,7 +39,8 @@ MEAN_SCALE = 10 # Scale of means for data
 NUM_DIMENSIONS = 1      # How many dimensions of data we're currently working with
 INPUT_SIZE = SAMPLE_SIZE*NUM_DIMENSIONS
 OUTPUT_SIZE = (NUM_DISTS+2)*NUM_DIMENSIONS
-
+LOSS_FN = CustomLoss()  # Custom loss function defined in loss_fn.py
+LEARNING_RATE = 1e-3    # Learning rate, for optimizer
 DEVICE = (
         # "cuda"        # Use with large networks and good GPU; requires special torch install
         # if torch.cuda.is_available()
@@ -47,6 +49,3 @@ DEVICE = (
         # else
         "cpu"           # Fastest for small networks because moving stuff to GPU is slow
         )
-
-LOSS_FN = CustomLoss()  # Custom loss function defined in loss_fn.py
-LEARNING_RATE = 1e-3    # Learning rate, for optimizer
