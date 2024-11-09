@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import logging
 
-from train import MyDataset, test
+from model_pipeline import MyDataset, test
 from generate_data import generate_data
 from env import DISTRIBUTION_TYPES, SAMPLE_SIZE, TEST_SIZE, MODEL, LOSS_FN, DEVICE
 
