@@ -29,9 +29,9 @@ class MyDataset(Dataset):
         return sample, label
 
 def train_model(dataloader, model, loss_function, optimizer, device):
-    size = len(dataloader.dataset)
-    model = model.to(device)        # For GPU use
     model.train()
+    size = len(dataloader.dataset)  # For debug logs
+
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device).float(), y.to(device).float()
 
@@ -42,14 +42,14 @@ def train_model(dataloader, model, loss_function, optimizer, device):
         optimizer.zero_grad()
 
         if batch % 100 == 0:
-            loss, current = loss.item(), (batch + 1) * len(X)
+            loss = loss.item()
+            current = (batch + 1) * len(X)
             logger.debug(f"Loss after training: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 def test_model(dataloader, model, loss_function, device):
-    num_batches = len(dataloader)
     model.eval()
-    test_loss = 0
 
+    test_loss = 0
     guesses = []
     actuals = []
     with torch.no_grad():
@@ -60,30 +60,30 @@ def test_model(dataloader, model, loss_function, device):
             logger.debug(f"pred: \t{pred}")
             logger.debug(f"y: \t\t{y}")
 
-            # TODO: Do stuff with guesses and actuals
-            # implement some metrics here
+            # TODO: Implement metrics with guesses and actuals?
 
             test_loss += loss_function(pred, y).item()
             logger.debug(f"loss: \t{loss_function(pred,y)}")
 
-    test_loss /= num_batches
+    test_loss /= len(dataloader)
     return test_loss
 
 def main():
-    # consistent initialization
+    start = time.time()
+
+    # Consistent initialization
     torch.manual_seed(42)
     np.random.seed(42)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
-    
-    start = time.time()
 
     for run in range(RUNS):
-        # rebuild model and optimizer each run
+        run_start = time.time()
+
+        # Rebuild model (and optimizer) each run
         model = build_model(INPUT_SIZE, OUTPUT_SIZE).to(DEVICE)
         optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
         loss_function = CustomLoss()  # Define the loss function here
-        run_start = time.time()
 
         # Generate the entire dataset first
         raw_data = generate_data(count=TRAINING_SIZE)
