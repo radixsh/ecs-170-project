@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
 
-from loss_fn import CustomLoss
+from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
 from env import *
