@@ -15,28 +15,29 @@ The architecture is as follows:
   dimension's mean and standard deviation)
 
 Next steps:
-[x] Move on to more types of distributions
-[ ] Train the model separately on different runs, and save only the best one to
-`model_weights.pth` (currently, it's saving the last run's weights, not the best
-one)
-[ ] Measure current performance, generate some nice pretty graphs
-[ ] Sanity-check the model's performance: For a few different queries, graph the
-samples provided to the model, and overlay both the model's guesses and the true
-distribution family, mean, and standard deviation
-[ ] Move on to multi-dimensional data
+- [x] Move on to more types of distributions
+- [ ] Train the model separately on different runs, and save only the best one
+  to `model_weights.pth` (currently, it's saving the last run's weights, not the
+  best one)
+- [ ] Measure current performance (using some standardized method), generate
+  some nice pretty graphs
+- [ ] Sanity-check the model's performance: For a few different queries, graph
+  the samples provided to the model, and overlay both the model's guesses and
+  the true distribution family, mean, and standard deviation
+- [ ] Move on to multi-dimensional data
 
 ## Main useful files
 ### analyze_performance.py
-`analyze_performance.py` runs the model saved in `model_weights.pth` on newly
-generated data 20 times. It outputs the average loss over all 20 runs at the
-end. Run this file to test the current model's performance.
+Runs the model saved in `model_weights.pth` on newly generated data 20 times.
+Prints loss per run, as well as average loss over all 20 runs. Run
+`analyze_performance.py` to test the current model's performance.
 
-### train.py
-`train.py` trains a new model based on the hyperparameters set in `env.py`. It
-generates fresh training data and trains the model using cross-validation (we
-might get rid of cross-validation later, though, because we have theoretically
-infinite quantities of fresh data). The finished model's connection weights are
-saved in `model_weights.pth`. Run this file to train a new model.
+### model_pipeline.py
+Trains a new model using hyperparameters set in `env.py`. The model is trained
+on newly generated data using cross-validation (which we might get rid of,
+though, because we have theoretically infinite quantities of new data). The
+finished model's connection weights are saved in `model_weights.pth`. Run this
+file to train a new model.
 
 ## Documentation for supporting files
 ### loss_fn.py
@@ -59,8 +60,7 @@ as some sort of pseudo–activation function processing the model's output layer
 
 ### generate_data.py
 `generate_data.py` provides a wrapper around functions from `distributions.py`
-for generating distributions from various families. We might remove
-`generate_data`.
+for generating distributions from various families. (We might remove this file.)
 
 Each entry in the returned list is an ordered tuple whose first entry is a list
 of data points and whose second entry is a list of label data. The label data is
