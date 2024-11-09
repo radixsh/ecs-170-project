@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
 
+from loss_fn import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
 from env import *
@@ -27,7 +28,7 @@ class MyDataset(Dataset):
         label = self.labels[index]
         return sample, label
 
-def train(dataloader, model, loss_fn, optimizer, device):
+def train(dataloader, model, loss_function, optimizer, device):
     size = len(dataloader.dataset)
     model = model.to(device)        # For GPU use
     model.train()
@@ -35,7 +36,7 @@ def train(dataloader, model, loss_fn, optimizer, device):
         X, y = X.to(device).float(), y.to(device).float()
 
         pred = model(X)             # Forward pass
-        loss = loss_fn(pred, y)     # Compute loss (prediction error)
+        loss = loss_function(pred, y)     # Compute loss (prediction error)
         loss.backward()             # Backpropagation
         optimizer.step()
         optimizer.zero_grad()
@@ -44,7 +45,7 @@ def train(dataloader, model, loss_fn, optimizer, device):
             loss, current = loss.item(), (batch + 1) * len(X)
             logger.debug(f"Loss after training: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
-def test(dataloader, model, loss_fn, device):
+def test(dataloader, model, loss_function, device):
     num_batches = len(dataloader)
     model.eval()
     test_loss = 0
@@ -62,8 +63,8 @@ def test(dataloader, model, loss_fn, device):
             # TODO: Do stuff with guesses and actuals
             # implement some metrics here
 
-            test_loss += loss_fn(pred, y).item()
-            logger.debug(f"loss: \t{loss_fn(pred,y)}")
+            test_loss += loss_function(pred, y).item()
+            logger.debug(f"loss: \t{loss_function(pred,y)}")
 
     test_loss /= num_batches
     return test_loss
@@ -81,6 +82,7 @@ def main():
         # rebuild model and optimizer each run
         model = build_model(INPUT_SIZE, OUTPUT_SIZE).to(DEVICE)
         optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
+        loss_function = CustomLoss()  # Define the loss function here
         run_start = time.time()
 
         # Generate the entire dataset first
@@ -107,8 +109,8 @@ def main():
                 validation_dataloader = DataLoader(validation_dataset)
 
                 # Train the model on the training data, and cross-validate
-                train(training_dataloader, model, LOSS_FN, optimizer, DEVICE)
-                loss = test(validation_dataloader, model, LOSS_FN, DEVICE)
+                train(training_dataloader, model, loss_function, optimizer, DEVICE)
+                loss = test(validation_dataloader, model, loss_function, DEVICE)
                 logger.info(f"Epoch {epoch + 1}\tFold {fold + 1}\t"
                             f"Avg loss (cross-validation phase): {loss}")
 
@@ -118,7 +120,7 @@ def main():
         test_labels = np.array([elem[1] for elem in raw_test_data])
         test_dataset = MyDataset(test_samples, test_labels)
         test_dataloader = DataLoader(test_dataset)
-        loss = test(test_dataloader, model, LOSS_FN, DEVICE)
+        loss = test(test_dataloader, model, loss_function, DEVICE)
         logger.info(f"Avg loss (testing): {loss}")
 
         run_end = time.time()

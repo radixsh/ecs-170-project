@@ -1,7 +1,3 @@
-import torch
-from torch import nn
-from loss_fn import *
-from generate_data import *
 from distributions import (
     beta_dist,
     gamma_dist,
@@ -39,7 +35,6 @@ MEAN_SCALE = 10 # Scale of means for data
 NUM_DIMENSIONS = 1      # How many dimensions of data we're currently working with
 INPUT_SIZE = SAMPLE_SIZE*NUM_DIMENSIONS
 OUTPUT_SIZE = (NUM_DISTS+2)*NUM_DIMENSIONS
-LOSS_FN = CustomLoss()  # Custom loss function defined in loss_fn.py
 LEARNING_RATE = 1e-3    # Learning rate, for optimizer
 DEVICE = (
         # "cuda"        # Use with large networks and good GPU; requires special torch install
