@@ -9,6 +9,7 @@ from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
 from env import *
+from distributions import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -81,8 +82,14 @@ def main():
         run_start = time.time()
 
         # Rebuild model (and optimizer) each run
-        model = build_model(INPUT_SIZE, OUTPUT_SIZE).to(DEVICE)
+        input_size = SAMPLE_SIZE * NUM_DIMENSIONS
+        output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
+        model = build_model(input_size, output_size).to(DEVICE)
         optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
+        #optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, foreach=True)
+        #optimizer = torch.optim.Adamw(model.parameters(), lr=LEARNING_RATE, foreach=True)
+        #optimizer = torch.optim.Adagrad(model.parameters(), lr=LEARNING_RATE, foreach=True)
+
         loss_function = CustomLoss()  # Define the loss function here
 
         # Generate the entire dataset first

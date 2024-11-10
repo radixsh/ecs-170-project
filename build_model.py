@@ -5,6 +5,9 @@ def build_model(input_size, output_size):
         nn.Linear(in_features=input_size, out_features=input_size),
         nn.ReLU(),
         nn.Linear(in_features=input_size, out_features=30),
+        # nn.Dropout()
+        nn.ReLU(),
+        nn.Linear(in_features=30, out_features=30),
         nn.ReLU(),
         nn.Linear(in_features=30, out_features=30),
         nn.ReLU(),
