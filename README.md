@@ -27,17 +27,19 @@ Next steps:
 - [ ] Move on to multi-dimensional data
 
 ## Main useful files
-### analyze_performance.py
-Runs the model saved in `model_weights.pth` on newly generated data 20 times.
-Prints loss per run, as well as average loss over all 20 runs. Run
-`analyze_performance.py` to test the current model's performance.
-
 ### model_pipeline.py
 Trains a new model using hyperparameters set in `env.py`. The model is trained
 on newly generated data using cross-validation (which we might get rid of,
 though, because we have theoretically infinite quantities of new data). The
-finished model's connection weights are saved in `model_weights.pth`. Run this
-file to train a new model.
+finished model's connection weights are saved in `model_weights.pth`.
+
+### ~~analyze_performance.py~~
+~~Runs the model saved in `model_weights.pth` on newly generated data 20 times.
+Prints loss per run, as well as average loss over all 20 runs.~~ For our
+preliminary report, we want to focus on how different hyperparameters affect how
+the model's metrics improve. Therefore, testing the finished model isn't useful
+for now, especially since its performance is not very good yet. We'll have to
+fix this later on in the project. 
 
 ## Documentation for supporting files
 ### loss_fn.py
