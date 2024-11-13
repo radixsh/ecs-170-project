@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from custom_loss_function import CustomLoss
 from build_model import build_model
@@ -138,6 +139,18 @@ def main():
     logger.info(f"Finished {RUNS} runs in {end - start:.2f} seconds")
 
     torch.save(model.state_dict(), 'model_weights.pth')
+
+    # Performance metrics TESTING using standardized metrics;
+    # (i.e. accuracy, precision, recall, and F1 score):
+    # accuracy = accuracy_score(test_labels, test_samples)
+    # precision = precision_score(test_labels, test_samples) 
+    # recall = recall_score(test_labels, test_samples) 
+    # f1 = f1_score(test_labels, test_samples) 
+
+    # print("Accuracy:", accuracy) 
+    # print("Precision:", precision) 
+    # print("Recall:", recall) 
+    # print("F1-Score:", f1) 
 
 if __name__ == "__main__":
     main()
