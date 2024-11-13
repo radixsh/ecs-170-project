@@ -140,17 +140,19 @@ def main():
 
     torch.save(model.state_dict(), 'model_weights.pth')
 
+    # print(samples)
+    # print(labels)
     # Performance metrics TESTING using standardized metrics;
     # (i.e. accuracy, precision, recall, and F1 score):
-    # accuracy = accuracy_score(test_labels, test_samples)
-    # precision = precision_score(test_labels, test_samples) 
-    # recall = recall_score(test_labels, test_samples) 
-    # f1 = f1_score(test_labels, test_samples) 
+    accuracy = accuracy_score(test_labels, test_samples)
+    precision = precision_score(test_labels, test_samples) 
+    recall = recall_score(test_labels, test_samples) 
+    f1 = f1_score(test_labels, test_samples) 
 
-    # print("Accuracy:", accuracy) 
-    # print("Precision:", precision) 
-    # print("Recall:", recall) 
-    # print("F1-Score:", f1) 
+    print("Accuracy:", accuracy) 
+    print("Precision:", precision) 
+    print("Recall:", recall) 
+    print("F1-Score:", f1) 
 
 if __name__ == "__main__":
     main()
