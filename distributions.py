@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import mpmath
-from env import MEAN_SCALE, SAMPLE_SIZE
+from env import MEAN_SCALE
 
 ### SEED THE RNG
 rng = np.random.default_rng()
@@ -20,14 +20,14 @@ def generate_pos_mean():
 
 ## SUPPORT = R
 
-def normal():
+def normal(sample_size):
     mean = generate_mean()
     stddev = generate_stddev()
     labels = [0,0,0,0,0,0,1,0,0,mean,stddev]
-    sample_data = rng.normal(mean, stddev, SAMPLE_SIZE)
+    sample_data = rng.normal(mean, stddev, sample_size)
     return (sample_data, labels)
 
-def gumbel():
+def gumbel(sample_size):
     mean = generate_mean()
     stddev = generate_stddev()
     labels = [0,0,1,0,0,0,0,0,0,mean,stddev]
@@ -41,10 +41,10 @@ def gumbel():
     # mu = mean - beta * euler
     mu = mean - beta * float(mpmath.euler)
 
-    sample_data = rng.gumbel(mu, beta, SAMPLE_SIZE)
+    sample_data = rng.gumbel(mu, beta, sample_size)
     return (sample_data, labels)
 
-def laplace():
+def laplace(sample_size):
     mean = generate_mean()
     stddev = generate_stddev()
     labels = [0,0,0,1,0,0,0,0,0,mean,stddev]
@@ -52,10 +52,10 @@ def laplace():
     # stddev^2 = 2b^2
     # b = sqrt(2)*stddev
     b = stddev * math.sqrt(2)
-    sample_data = rng.laplace(mean, b, SAMPLE_SIZE)
+    sample_data = rng.laplace(mean, b, sample_size)
     return (sample_data, labels)
 
-def logistic():
+def logistic(sample_size):
     mean = generate_mean()
     stddev = generate_stddev()
     labels = [0,0,0,0,1,0,0,0,0,mean,stddev]
@@ -63,13 +63,13 @@ def logistic():
     # stddev^2 = pi^2 s^2 * 1/3
     # s = sqrt(3)/pi * stddev
     s = stddev * math.sqrt(3) / math.pi
-    sample_data = rng.logistic(mean, s, SAMPLE_SIZE)
+    sample_data = rng.logistic(mean, s, sample_size)
     return (sample_data, labels)
 
 
 ## SUPPORT >= 0
 
-def lognormal():
+def lognormal(sample_size):
     mean = generate_pos_mean()
     stddev = generate_stddev()
     labels = [0,0,0,0,0,1,0,0,0,mean,stddev]
@@ -80,10 +80,10 @@ def lognormal():
     # mu = ln(mean / sqrt(1 + (mean/stddev)^2))
     sigma = math.sqrt(math.log(1 + (mean / stddev) ** 2))
     mu = math.log(mean / math.sqrt(1 + (mean / stddev) ** 2))
-    sample_data = rng.lognormal(mu, sigma, SAMPLE_SIZE)
+    sample_data = rng.lognormal(mu, sigma, sample_size)
     return (sample_data, labels)
 
-def rayleigh():
+def rayleigh(sample_size):
     mean = generate_pos_mean()
     stddev = generate_stddev()
     labels = [0,0,0,0,0,0,0,1,0,mean,stddev]
@@ -92,13 +92,13 @@ def rayleigh():
     # sigma = mean * sqrt(2/pi)
     # One parameter, which must be positive
     sigma = mean * math.sqrt(2 / math.pi)
-    sample_data = rng.rayleigh(sigma, SAMPLE_SIZE)
+    sample_data = rng.rayleigh(sigma, sample_size)
     return (sample_data, labels)
 
 ## SUPPORT > 0
 # Non-positive mean is illegal for these distributions
 
-def beta():
+def beta(sample_size):
     # Need a mean in (0, 1) and a stddev in (0, mean - mean^2)
     # Possibly write this differently
     mean = (generate_mean() / MEAN_SCALE + 1) / 2
@@ -107,20 +107,20 @@ def beta():
 
     a = math.sqrt((mean ** 2 - mean ** 3) / stddev - mean)
     b = (a / mean) - a
-    sample_data = rng.beta(a, b, SAMPLE_SIZE)
+    sample_data = rng.beta(a, b, sample_size)
     return (sample_data, labels)
 
-def gamma():
+def gamma(sample_size):
     mean = generate_pos_mean()
     stddev = generate_stddev()
     labels = [0,1,0,0,0,0,0,0,0,mean,stddev]
 
     k = (mean / stddev) ** 2
     theta = (stddev ** 2) / mean
-    sample_data = rng.gamma(k, theta, SAMPLE_SIZE)
+    sample_data = rng.gamma(k, theta, sample_size)
     return (sample_data, labels)
 
-def wald():
+def wald(sample_size):
     mean = generate_pos_mean()
     stddev = generate_stddev()
     labels = [0,0,0,0,0,0,0,0,1,mean,stddev]
@@ -128,7 +128,7 @@ def wald():
     # stddev^2 = mean^3 / lam
     # lam = mean^3 / stddev^2
     lam = (mean ** 3) / (stddev ** 2)
-    sample_data = rng.wald(mean, lam, SAMPLE_SIZE)
+    sample_data = rng.wald(mean, lam, sample_size)
     return (sample_data, labels)
 
 DISTRIBUTION_FUNCTIONS = {

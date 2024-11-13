@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
-from env import *
+from env import DEVICE 
 from distributions import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
@@ -70,10 +70,8 @@ def test_model(dataloader, model, loss_function, device):
     test_loss /= len(dataloader)
     return test_loss
 
-def pipeline(model):
+def pipeline(model, setup):
     start = time.time()
-
-    print(model)
 
     # Consistent initialization
     torch.manual_seed(42)
@@ -81,14 +79,15 @@ def pipeline(model):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
 
-    for run in range(RUNS):
+    for run in range(setup['RUNS']):
         run_start = time.time()
 
         # Rebuild model (and optimizer) each run
         # input_size = SAMPLE_SIZE * NUM_DIMENSIONS
         # output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
         # model = build_model(input_size, output_size).to(DEVICE)
-        optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
+        optimizer = torch.optim.SGD(model.parameters(), 
+                                    lr=setup['LEARNING_RATE'], foreach=True)
         #optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, foreach=True)
         #optimizer = torch.optim.Adamw(model.parameters(), lr=LEARNING_RATE, foreach=True)
         #optimizer = torch.optim.Adagrad(model.parameters(), lr=LEARNING_RATE, foreach=True)
@@ -96,7 +95,8 @@ def pipeline(model):
         loss_function = CustomLoss()  # Define the loss function here
 
         # Generate the entire dataset first
-        raw_data = generate_data(count=TRAINING_SIZE)
+        raw_data = generate_data(count=setup['TRAINING_SIZE'],
+                                 sample_size=setup['SAMPLE_SIZE'])
         samples = np.array([elem[0] for elem in raw_data])
         labels = np.array([elem[1] for elem in raw_data])
 
@@ -107,8 +107,8 @@ def pipeline(model):
         # k - 1 remaining folds form the training set.
         # This reduces bias, gives our model more data to train on, and helps us
         # evaluate our model's performance.
-        kf = KFold(n_splits=NUM_SPLITS, shuffle=True, random_state=42)
-        for epoch in range(EPOCHS):
+        kf = KFold(n_splits=setup['NUM_SPLITS'], shuffle=True, random_state=42)
+        for epoch in range(setup['EPOCHS']):
             for fold, (train_index, val_index) in enumerate(kf.split(samples)):
                 training_samples, validation_samples = samples[train_index], samples[val_index]
                 training_labels, validation_labels = labels[train_index], labels[val_index]
