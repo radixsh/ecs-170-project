@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from env import ALPHA, NUM_DIMENSIONS
+from env import SETUP, NUM_DIMENSIONS
 from distributions import DISTRIBUTION_FUNCTIONS
 
 class CustomLoss(nn.Module):
@@ -112,4 +112,4 @@ class CustomLoss(nn.Module):
         # dist_loss of 0 means loss just average of mean_loss and stddev_loss
         # dist_loss of 1 means loss -> infinity
         #return (mean_loss + stddev_loss) / (2 * (env.NUM_DIMENSIONS - dist_loss))
-        return (avg_num_loss + ALPHA * dist_loss) / (1 - dist_loss)
+        return (avg_num_loss + SETUP['ALPHA'] * dist_loss) / (1 - dist_loss)
