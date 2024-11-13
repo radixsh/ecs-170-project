@@ -14,7 +14,7 @@ from distributions import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-console_handler = logging.StreamHandler()
+console_handler = logging.NullHandler()
 logger.addHandler(console_handler)
 
 class MyDataset(Dataset):
@@ -70,8 +70,10 @@ def test_model(dataloader, model, loss_function, device):
     test_loss /= len(dataloader)
     return test_loss
 
-def main():
+def pipeline(model):
     start = time.time()
+
+    print(model)
 
     # Consistent initialization
     torch.manual_seed(42)
@@ -83,9 +85,9 @@ def main():
         run_start = time.time()
 
         # Rebuild model (and optimizer) each run
-        input_size = SAMPLE_SIZE * NUM_DIMENSIONS
-        output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
-        model = build_model(input_size, output_size).to(DEVICE)
+        # input_size = SAMPLE_SIZE * NUM_DIMENSIONS
+        # output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
+        # model = build_model(input_size, output_size).to(DEVICE)
         optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
         #optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, foreach=True)
         #optimizer = torch.optim.Adamw(model.parameters(), lr=LEARNING_RATE, foreach=True)
@@ -121,7 +123,7 @@ def main():
                 loss = test_model(validation_dataloader, model, loss_function, DEVICE)
                 logger.info(f"Epoch {epoch + 1}\tFold {fold + 1}\t"
                             f"Avg loss (cross-validation phase): {loss}")
-
+    '''
         # Test the model on the test data
         raw_test_data = generate_data(count=TEST_SIZE)
         test_samples = np.array([elem[0] for elem in raw_test_data])
@@ -153,6 +155,7 @@ def main():
     print("Precision:", precision) 
     print("Recall:", recall) 
     print("F1-Score:", f1) 
+    '''
 
 if __name__ == "__main__":
-    main()
+    pipeline()
