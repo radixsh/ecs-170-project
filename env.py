@@ -26,7 +26,7 @@ DEVICE = (
         "cpu"           # Fastest for small networks because moving stuff to GPU is slow
         )
 
-setup = {
+SETUP = {
         "TRAINING_SIZE": 50,
         "TEST_SIZE": 50,
         "SAMPLE_SIZE": 5,

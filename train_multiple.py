@@ -9,7 +9,7 @@ import importlib
 from sklearn.metrics import mean_absolute_error, r2_score
 from torch.utils.data import DataLoader
 
-from env import *
+from env import NUM_DIMENSIONS, SETUP, DEVICE
 from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
@@ -34,7 +34,7 @@ def update_sample_size(sample_size):
     with open('env.py', 'w') as f:
         f.writelines(updated)
 
-# Goal: Train multiple things
+# Goal: Train multiple models, and save each one 
 def main():
     start = time.time()
 
@@ -51,25 +51,21 @@ def main():
 
     # Train one model per sample_size
     for i, sample_size in enumerate(sample_sizes):
-        # Update SAMPLE_SIZE in env.py
-        update_sample_size(sample_size)
+        # Update SAMPLE_SIZE in the dict from env.py 
+        SETUP['SAMPLE_SIZE'] = sample_size
 
         # Initialize a new neural net using this new SAMPLE_SIZE
-        input_size = sample_size * NUM_DIMENSIONS
+        input_size = SETUP['SAMPLE_SIZE'] * NUM_DIMENSIONS
         output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
         
-        from custom_loss_function import CustomLoss
-        from build_model import build_model
-        from generate_data import generate_data
-        from model_pipeline import pipeline, MyDataset
-        from distributions import DISTRIBUTION_FUNCTIONS
-
         # Train the model anew, and save the resulting model's weights out
         logger.debug(f"Training model with SAMPLE_SIZE={sample_size}...")
         train_start = time.time()
 
-        model_weights = pipeline(model)
+        model_weights = pipeline(model, SETUP)
+        if model_weights is None:
+            logger.info("pipeline() did not return anything!!! mehhhhhh!!!!!")
         torch.save(model_weights, dests[i])
 
         train_end = time.time()

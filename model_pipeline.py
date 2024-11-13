@@ -156,6 +156,7 @@ def pipeline(model, setup):
     print("Recall:", recall) 
     print("F1-Score:", f1) 
     '''
+    return model.state_dict()
 
 if __name__ == "__main__":
     pipeline()

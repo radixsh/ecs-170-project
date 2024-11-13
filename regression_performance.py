@@ -4,6 +4,8 @@ import numpy as np
 import logging
 import time
 import torch
+import os
+import re
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score
 from torch.utils.data import DataLoader
 
@@ -26,8 +28,8 @@ def get_mae_mape_r2(model, desired) -> (float, float):
         index = -1
 
     # Test the model on the test data
-    raw_test_data = generate_data(count=setup['TEST_SIZE'],
-                                  sample_size=setup['SAMPLE_SIZE'])
+    raw_test_data = generate_data(count=SETUP['TEST_SIZE'],
+                                  sample_size=SETUP['SAMPLE_SIZE'])
     test_samples = np.array([elem[0] for elem in raw_test_data])
     test_labels = np.array([elem[1] for elem in raw_test_data])
     test_dataset = MyDataset(test_samples, test_labels)
@@ -109,7 +111,20 @@ def main():
     logger.info("Measuring MAE, MAPE, and R2 for means and stddevs")
     start = time.time()
 
-    sample_sizes = [5, 25, 50, 100, 300, 500, 800, 1000]
+    # Make sure the 'results' directory exists (for png graphs of results)
+    results_directory = 'results'
+    os.makedirs(results_directory, exist_ok=True)
+
+    # Make sure the 'models' directory exists (and has model weights in it)
+    models_directory = 'models'
+    os.makedirs(models_directory, exist_ok=True)
+
+    model_filenames = []
+    for item in os.listdir(models_directory):
+        fullpath = os.path.join(models_directory, item)
+        if os.path.isfile(fullpath):
+            model_filenames.append(fullpath)
+    print(f'Analyzing {model_filenames}')
 
     mean_maes = []
     stddev_maes = []
@@ -117,19 +132,32 @@ def main():
     stddev_mapes = []
     mean_r2s = []
     stddev_r2s = []
-    for sample_size in sample_sizes:
-        train_start = time.time()
+    sample_sizes = []       # For matplotlib graphs
+    for filename in model_filenames:
+        model_start = time.time()
 
-        # Update setup['SAMPLE_SIZE'] in env.py
-        setup['SAMPLE_SIZE'] = sample_size
+        # Update SETUP['SAMPLE_SIZE'] with the value from filename
+        match = re.search(r'(\d+).pth$', filename)
+        if match:
+            sample_size = int(match.group(1))
+            sample_sizes.append(sample_size)     # For matplotlib graphs
+            SETUP['SAMPLE_SIZE'] = sample_size
+        else:
+            logger.info(f'No SAMPLE_SIZE detected in "{filename}", skipping')
+            continue
 
         # For each new sample size, re-initialize
-        input_size = setup['SAMPLE_SIZE'] * NUM_DIMENSIONS
+        input_size = sample_size * NUM_DIMENSIONS
         output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
 
-        # Train the model anew
-        pipeline(model, setup)
+        # Load the model's weights
+        state_dict = torch.load(filename)
+        if state_dict is None:
+            logger.debug("Looks like the state dict wasn't properly saved "
+                        "out :( Skipping...")
+            continue
+        model.load_state_dict(state_dict)
 
         # Get MAE and R2 for this sample size
         mean_mae, mean_mape, mean_r2 = get_mae_mape_r2(model, "mean")
@@ -141,12 +169,12 @@ def main():
         stddev_mapes.append(stddev_mape)
         stddev_r2s.append(stddev_r2)
 
-        train_end = time.time()
+        model_end = time.time()
         logger.info(f"SAMPLE_SIZE={sample_size}\t--> "
                     f"mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
                     f"\n\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
                     f"\n\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "
-                    f"(Finished in {train_end - train_start:.2f} seconds)")
+                    f"(Finished in {model_end - model_start:.2f} seconds)")
 
     end = time.time()
     logger.info(f"Finished collecting data in {end - start:.2f} seconds")
