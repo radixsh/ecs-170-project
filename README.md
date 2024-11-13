@@ -1,13 +1,12 @@
 # ECS 170 AI Project
-We have several prototypes that
-identify the distribution family,
+Our current neural net is a prototype that identifies the distribution family,
 mean, and standard deviation from which some samples were drawn. Trained with
-hyperparameters saved in `env.py`, each model's weights are uploaded here in
-`models/` subdirectory.
+hyperparameters saved in `env.py`, the model's weights are uploaded here as
+`model_weights.pth`. (Except the model weights are super outdated right now.)
 
 The architecture is as follows:
-* Input layer of `SAMPLE_SIZE` units (which varies among the models in `models/`)
-* Hidden layer of `SAMPLE_SIZE` units
+* Input layer of `SAMPLE_SIZE=30` units
+* Hidden layer of `SAMPLE_SIZE=30` units
 * Hidden layer of 30 units, using `ReLU` activation function
 * Hidden layer of 30 units, using `ReLU` activation function
 * Output layer of 11 * `NUM_DIMENSIONS=1` units (each of `NUM_DIMENSIONS`
@@ -17,35 +16,30 @@ The architecture is as follows:
 
 Next steps:
 - [x] Move on to more types of distributions
-- [x] Measure current performance (using some standardized method), generate
-  some nice pretty graphs
 - [ ] Train the model separately on different runs, and save only the best one
   to `model_weights.pth` (currently, it's saving the last run's weights, not the
   best one)
+- [ ] Measure current performance (using some standardized method), generate
+  some nice pretty graphs
 - [ ] Sanity-check the model's performance: For a few different queries, graph
   the samples provided to the model, and overlay both the model's guesses and
   the true distribution family, mean, and standard deviation
 - [ ] Move on to multi-dimensional data
 
 ## Main useful files
-### train_multiple.py
-Trains multiple models and saves each one's weights into `models/` subdirectory.
-Each model has hyperparameters set in `env.py`, except `SAMPLE_SIZE` which is
-different for each model.
-
-### regression_performance.py
-Measures regression performance of each model in `models/` wrt mean and stddev
-guesses (hence regression only, not classification). Performance is measured in
-terms of MAE, MAPE, and R^2. The performance is graphed as scatter plots in
-`results/` subdirectory.
-
 ### model_pipeline.py
-Trains a new model using hyperparameters passed in via `setup` argument. The
-model is trained on newly generated data using cross-validation (which we might
-get rid of, though, because we have theoretically infinite quantities of new
-data). The finished model's connection weights are returned, and then
-`train_multiple` is able to catch that return value and save each different
-model's weights out to a different filename in `models/`.
+Trains a new model using hyperparameters set in `env.py`. The model is trained
+on newly generated data using cross-validation (which we might get rid of,
+though, because we have theoretically infinite quantities of new data). The
+finished model's connection weights are saved in `model_weights.pth`.
+
+### ~~analyze_performance.py~~
+~~Runs the model saved in `model_weights.pth` on newly generated data 20 times.
+Prints loss per run, as well as average loss over all 20 runs.~~ For our
+preliminary report, we want to focus on how different hyperparameters affect how
+the model's metrics improve. Therefore, testing the finished model isn't useful
+for now, especially since its performance is not very good yet. We'll have to
+fix this later on in the project. 
 
 ## Documentation for supporting files
 ### loss_fn.py

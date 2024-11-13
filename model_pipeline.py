@@ -4,17 +4,16 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
-from env import DEVICE 
+from env import *
 from distributions import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-console_handler = logging.NullHandler()
+console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
 class MyDataset(Dataset):
@@ -70,7 +69,7 @@ def test_model(dataloader, model, loss_function, device):
     test_loss /= len(dataloader)
     return test_loss
 
-def pipeline(model, setup):
+def main():
     start = time.time()
 
     # Consistent initialization
@@ -79,15 +78,14 @@ def pipeline(model, setup):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
 
-    for run in range(setup['RUNS']):
+    for run in range(RUNS):
         run_start = time.time()
 
         # Rebuild model (and optimizer) each run
-        # input_size = SAMPLE_SIZE * NUM_DIMENSIONS
-        # output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
-        # model = build_model(input_size, output_size).to(DEVICE)
-        optimizer = torch.optim.SGD(model.parameters(), 
-                                    lr=setup['LEARNING_RATE'], foreach=True)
+        input_size = SAMPLE_SIZE * NUM_DIMENSIONS
+        output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
+        model = build_model(input_size, output_size).to(DEVICE)
+        optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, foreach=True)
         #optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, foreach=True)
         #optimizer = torch.optim.Adamw(model.parameters(), lr=LEARNING_RATE, foreach=True)
         #optimizer = torch.optim.Adagrad(model.parameters(), lr=LEARNING_RATE, foreach=True)
@@ -95,8 +93,7 @@ def pipeline(model, setup):
         loss_function = CustomLoss()  # Define the loss function here
 
         # Generate the entire dataset first
-        raw_data = generate_data(count=setup['TRAINING_SIZE'],
-                                 sample_size=setup['SAMPLE_SIZE'])
+        raw_data = generate_data(count=TRAINING_SIZE)
         samples = np.array([elem[0] for elem in raw_data])
         labels = np.array([elem[1] for elem in raw_data])
 
@@ -107,8 +104,8 @@ def pipeline(model, setup):
         # k - 1 remaining folds form the training set.
         # This reduces bias, gives our model more data to train on, and helps us
         # evaluate our model's performance.
-        kf = KFold(n_splits=setup['NUM_SPLITS'], shuffle=True, random_state=42)
-        for epoch in range(setup['EPOCHS']):
+        kf = KFold(n_splits=NUM_SPLITS, shuffle=True, random_state=42)
+        for epoch in range(EPOCHS):
             for fold, (train_index, val_index) in enumerate(kf.split(samples)):
                 training_samples, validation_samples = samples[train_index], samples[val_index]
                 training_labels, validation_labels = labels[train_index], labels[val_index]
@@ -123,7 +120,7 @@ def pipeline(model, setup):
                 loss = test_model(validation_dataloader, model, loss_function, DEVICE)
                 logger.info(f"Epoch {epoch + 1}\tFold {fold + 1}\t"
                             f"Avg loss (cross-validation phase): {loss}")
-    '''
+
         # Test the model on the test data
         raw_test_data = generate_data(count=TEST_SIZE)
         test_samples = np.array([elem[0] for elem in raw_test_data])
@@ -142,21 +139,5 @@ def pipeline(model, setup):
 
     torch.save(model.state_dict(), 'model_weights.pth')
 
-    # print(samples)
-    # print(labels)
-    # Performance metrics TESTING using standardized metrics;
-    # (i.e. accuracy, precision, recall, and F1 score):
-    accuracy = accuracy_score(test_labels, test_samples)
-    precision = precision_score(test_labels, test_samples) 
-    recall = recall_score(test_labels, test_samples) 
-    f1 = f1_score(test_labels, test_samples) 
-
-    print("Accuracy:", accuracy) 
-    print("Precision:", precision) 
-    print("Recall:", recall) 
-    print("F1-Score:", f1) 
-    '''
-    return model.state_dict()
-
 if __name__ == "__main__":
-    pipeline()
+    main()
