@@ -21,24 +21,11 @@ logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
-def update_sample_size(sample_size):
-    logger.debug(f"updating SAMPLE_SIZE to {sample_size}")
-    # https://stackoverflow.com/questions/17140886/how-to-search-and-replace-text-in-a-file
-    with open('env.py', 'r') as f:
-        lines = f.readlines()
-
-    replacement = f'SAMPLE_SIZE = {sample_size}\n'
-    updated = [replacement if line.startswith('SAMPLE_SIZE') else line
-               for line in lines]
-
-    with open('env.py', 'w') as f:
-        f.writelines(updated)
-
-# Goal: Train multiple models, and save each one 
+# Goal: Train multiple models, and save each one
 def main():
     start = time.time()
 
-    sample_sizes = [5, 10, 25, 50, 100, 500, 1000]
+    training_sizes = [10, 50, 100, 300, 500, 800]
 
     # Make sure the models directory exists
     models_directory = 'models'
@@ -46,21 +33,21 @@ def main():
 
     # Filenames for various models
     dests = []
-    for i in sample_sizes:
-        dests.append(f'{models_directory}/weights_sample_size_{i}.pth')
+    for i in training_sizes:
+        dests.append(f'{models_directory}/weights_training_size_{i}.pth')
 
-    # Train one model per sample_size
-    for i, sample_size in enumerate(sample_sizes):
-        # Update SAMPLE_SIZE in the dict from env.py 
-        SETUP['SAMPLE_SIZE'] = sample_size
+    # Train one model per training_size
+    for i, training_size in enumerate(training_sizes):
+        # Update TRAINING_SIZE in the dict from env.py
+        SETUP['TRAINING_SIZE'] = training_size
 
-        # Initialize a new neural net using this new SAMPLE_SIZE
+        # Initialize a new neural net
         input_size = SETUP['SAMPLE_SIZE'] * NUM_DIMENSIONS
         output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
-        
+
         # Train the model anew, and save the resulting model's weights out
-        logger.debug(f"Training model with SAMPLE_SIZE={sample_size}...")
+        logger.debug(f"Training model with TRAINING_SIZE={training_size}...")
         train_start = time.time()
 
         model_weights = pipeline(model, SETUP)

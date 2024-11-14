@@ -21,6 +21,8 @@ logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
+VARIABLE = "TRAINING_SIZE"
+
 def get_mae_mape_r2(model, desired) -> (float, float):
     if desired == "mean":
         index = -2
@@ -61,7 +63,7 @@ def plot_mae(sample_sizes, mean_maes, stddev_maes):
     plt.scatter(sample_sizes, stddev_maes, color="orange", label="Stddevs")
 
     plt.xlim(0, max(sample_sizes) * 1.1)
-    plt.xlabel('Sample sizes')
+    plt.xlabel(VARIABLE)
 
     both = mean_maes + stddev_maes + [0]
     plt.ylim(min(both), max(both) * 1.1)
@@ -77,7 +79,7 @@ def plot_mape(sample_sizes, mean_mapes, stddev_mapes):
     plt.scatter(sample_sizes, stddev_mapes, color="orange", label="Stddevs")
 
     plt.xlim(0, max(sample_sizes) * 1.1)
-    plt.xlabel('Sample sizes')
+    plt.xlabel(VARIABLE)
 
     both = mean_mapes + stddev_mapes + [0]
     plt.ylim(min(both), max(both) * 1.1)
@@ -95,7 +97,7 @@ def plot_r2(sample_sizes, mean_r2s, stddev_r2s):
                 label="Stddevs")
 
     plt.xlim(0, max(sample_sizes) * 1.1)
-    plt.xlabel('Sample sizes')
+    plt.xlabel(VARIABLE)
 
     both = mean_r2s + stddev_r2s + [0]
     plt.ylim(min(both) * 1.1, max(both) * 1.1)
@@ -132,22 +134,22 @@ def main():
     stddev_mapes = []
     mean_r2s = []
     stddev_r2s = []
-    sample_sizes = []       # For matplotlib graphs
+    training_sizes = []       # For matplotlib graphs
     for filename in model_filenames:
         model_start = time.time()
 
-        # Update SETUP['SAMPLE_SIZE'] with the value from filename
+        # Update SETUP[VARIABLE] with the value from filename
         match = re.search(r'(\d+).pth$', filename)
         if match:
-            sample_size = int(match.group(1))
-            sample_sizes.append(sample_size)     # For matplotlib graphs
-            SETUP['SAMPLE_SIZE'] = sample_size
+            training_size = int(match.group(1))
+            training_sizes.append(training_size)     # For matplotlib graphs
+            SETUP[VARIABLE] = training_size
         else:
-            logger.info(f'No SAMPLE_SIZE detected in "{filename}", skipping')
+            logger.info(f'No VARIABLE detected in "{filename}", skipping')
             continue
 
         # For each new sample size, re-initialize
-        input_size = sample_size * NUM_DIMENSIONS
+        input_size = SETUP['SAMPLE_SIZE'] * NUM_DIMENSIONS
         output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
 
@@ -170,18 +172,18 @@ def main():
         stddev_r2s.append(stddev_r2)
 
         model_end = time.time()
-        logger.info(f"SAMPLE_SIZE={sample_size}\t--> "
+        logger.info(f"{VARIABLE}={training_size}\t--> "
                     f"mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
-                    f"\n\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
-                    f"\n\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "
+                    f"\n\t\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
+                    f"\n\t\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "
                     f"(Finished in {model_end - model_start:.2f} seconds)")
 
     end = time.time()
     logger.info(f"Finished collecting data in {end - start:.2f} seconds")
 
-    plot_mae(sample_sizes, mean_maes, stddev_maes)
-    plot_mape(sample_sizes, mean_mapes, stddev_mapes)
-    plot_r2(sample_sizes, mean_r2s, stddev_r2s)
+    plot_mae(training_sizes, mean_maes, stddev_maes)
+    plot_mape(training_sizes, mean_mapes, stddev_mapes)
+    plot_r2(training_sizes, mean_r2s, stddev_r2s)
 
 if __name__ == "__main__":
     main()

@@ -11,3 +11,9 @@ wheels/
 
 # MacOS
 .DS_Store
+
+# vim
+.swp
+
+# models directory (too big to push)
+models/

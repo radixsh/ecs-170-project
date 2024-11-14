@@ -29,7 +29,7 @@ DEVICE = (
 SETUP = {
         "TRAINING_SIZE": 50,
         "TEST_SIZE": 50,
-        "SAMPLE_SIZE": 5,
+        "SAMPLE_SIZE": 10,
         "NUM_SPLITS": 2,
         "EPOCHS": 5,
         "RUNS": 1,
