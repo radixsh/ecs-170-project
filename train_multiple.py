@@ -13,7 +13,7 @@ from env import NUM_DIMENSIONS, SETUP, DEVICE
 from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
-from model_pipeline import pipeline, MyDataset
+from pipeline import pipeline, MyDataset
 from distributions import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ logger.addHandler(console_handler)
 def main():
     start = time.time()
 
-    training_sizes = [10, 50, 100, 300, 500, 800]
+    training_sizes = [10, 100, 500, 1000, 2000, 4000, 8000, 10000]
 
     # Make sure the models directory exists
     models_directory = 'models'
