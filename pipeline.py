@@ -2,7 +2,7 @@ import time
 import logging
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
@@ -10,25 +10,13 @@ from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
 from env import DEVICE
+from dataset import MyDataset
 from distributions import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 console_handler = logging.NullHandler()
 logger.addHandler(console_handler)
-
-class MyDataset(Dataset):
-    def __init__(self, data, labels):
-        self.data = data
-        self.labels = labels
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        sample = self.data[index]
-        label = self.labels[index]
-        return sample, label
 
 # TODO: Increase batch size (I think it's currently 1)
 # Batch size 1: gradient calculations might be noisy :(
@@ -74,14 +62,20 @@ def test_model(dataloader, model, loss_function, device):
     test_loss /= len(dataloader)
     return test_loss
 
-def get_dataloader(config) -> DataLoader:
-    raw_data = generate_data(count=config['TRAINING_SIZE'],
-                                      sample_size=config['SAMPLE_SIZE'])
-    samples = np.array([elem[0] for elem in raw_data])
-    labels = np.array([elem[1] for elem in raw_data])
-    dataset = MyDataset(samples, labels)
-    dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
-    return dataloader
+def get_dataloader(config, filename=None) -> DataLoader:
+    if filename:
+        dataloader = torch.load(filename)
+        return dataloader
+
+    else:
+        raw_data = generate_data(count=config['TRAINING_SIZE'],
+                                 sample_size=config['SAMPLE_SIZE'])
+        samples = np.array([elem[0] for elem in raw_data])
+        labels = np.array([elem[1] for elem in raw_data])
+
+        dataset = MyDataset(samples, labels)
+        dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
+        return dataloader
 
 def pipeline(model, config):
     start = time.time()
@@ -106,12 +100,12 @@ def pipeline(model, config):
     for r in range(config['RUNS']):
         run_start = time.time()
 
-        training_dataloader = get_dataloader(config)
-        test_dataloader = get_dataloader(config)
+        train_dataloader = get_dataloader(config, 'data/train_dataloader')
+        test_dataloader = get_dataloader(config, 'data/test_dataloader')
 
         for epoch in range(config['EPOCHS']):
             logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
-            train_model(training_dataloader, model, loss_function, optimizer, DEVICE)
+            train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
             test_model(test_dataloader, model, loss_function, DEVICE)
 
         run_end = time.time()

@@ -30,8 +30,8 @@ def get_mae_mape_r2(model, desired) -> (float, float):
         index = -1
 
     # Test the model on the test data
-    raw_test_data = generate_data(count=SETUP['TEST_SIZE'],
-                                  sample_size=SETUP['SAMPLE_SIZE'])
+    raw_test_data = generate_data(count=CONFIG['TEST_SIZE'],
+                                  sample_size=CONFIG['SAMPLE_SIZE'])
     test_samples = np.array([elem[0] for elem in raw_test_data])
     test_labels = np.array([elem[1] for elem in raw_test_data])
     test_dataset = MyDataset(test_samples, test_labels)
@@ -108,18 +108,18 @@ def main():
     for filename in model_filenames:
         model_start = time.time()
 
-        # Update SETUP[VARIABLE] with the value from filename
+        # Update CONFIG[VARIABLE] with the value from filename
         match = re.search(r'(\d+).pth$', filename)
         if match:
             training_size = int(match.group(1))
             training_sizes.append(training_size)     # For matplotlib graphs
-            SETUP[VARIABLE] = training_size
+            CONFIG[VARIABLE] = training_size
         else:
             logger.info(f'(No {VARIABLE} detected in "{filename}", skipping)')
             continue
 
         # For each new sample size, re-initialize
-        input_size = SETUP['SAMPLE_SIZE'] * NUM_DIMENSIONS
+        input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
         output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
 
