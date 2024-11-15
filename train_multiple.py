@@ -9,7 +9,7 @@ import importlib
 from sklearn.metrics import mean_absolute_error, r2_score
 from torch.utils.data import DataLoader
 
-from env import NUM_DIMENSIONS, SETUP, DEVICE
+from env import NUM_DIMENSIONS, DEVICE, CONFIG
 from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
@@ -25,7 +25,7 @@ logger.addHandler(console_handler)
 def main():
     start = time.time()
 
-    training_sizes = [10, 100, 500, 1000, 2000, 4000, 8000, 10000]
+    training_sizes = [100]#, 100, 500, 1000, 2000, 4000, 8000, 10000]
 
     # Make sure the models directory exists
     models_directory = 'models'
@@ -39,10 +39,10 @@ def main():
     # Train one model per training_size
     for i, training_size in enumerate(training_sizes):
         # Update TRAINING_SIZE in the dict from env.py
-        SETUP['TRAINING_SIZE'] = training_size
+        CONFIG['TRAINING_SIZE'] = training_size
 
         # Initialize a new neural net
-        input_size = SETUP['SAMPLE_SIZE'] * NUM_DIMENSIONS
+        input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
         output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
 
@@ -50,7 +50,7 @@ def main():
         logger.debug(f"Training model with TRAINING_SIZE={training_size}...")
         train_start = time.time()
 
-        model_weights = pipeline(model, SETUP)
+        model_weights = pipeline(model, CONFIG)
         if model_weights is None:
             logger.info("pipeline() did not return anything!!! mehhhhhh!!!!!")
         torch.save(model_weights, dests[i])

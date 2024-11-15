@@ -74,6 +74,15 @@ def test_model(dataloader, model, loss_function, device):
     test_loss /= len(dataloader)
     return test_loss
 
+def get_dataloader(config) -> DataLoader:
+    raw_data = generate_data(count=config['TRAINING_SIZE'],
+                                      sample_size=config['SAMPLE_SIZE'])
+    samples = np.array([elem[0] for elem in raw_data])
+    labels = np.array([elem[1] for elem in raw_data])
+    dataset = MyDataset(samples, labels)
+    dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
+    return dataloader
+
 def pipeline(model, config):
     start = time.time()
 
@@ -97,25 +106,8 @@ def pipeline(model, config):
     for r in range(config['RUNS']):
         run_start = time.time()
 
-        # Generate the dataset for this run
-        raw_data = generate_data(count=config['TRAINING_SIZE'],
-                                 sample_size=config['SAMPLE_SIZE'])
-        samples = np.array([elem[0] for elem in raw_data])
-        labels = np.array([elem[1] for elem in raw_data])
-
-        raw_training_data = generate_data(count=config['TRAINING_SIZE'],
-                                          sample_size=config['SAMPLE_SIZE'])
-        training_samples = np.array([elem[0] for elem in raw_training_data])
-        training_labels = np.array([elem[1] for elem in raw_training_data])
-        training_dataset = MyDataset(training_samples, training_labels)
-        training_dataloader = DataLoader(training_dataset)
-
-        raw_test_data = generate_data(count=config['TEST_SIZE'],
-                                      sample_size=config['SAMPLE_SIZE'])
-        test_samples = np.array([elem[0] for elem in raw_test_data])
-        test_labels = np.array([elem[1] for elem in raw_test_data])
-        test_dataset = MyDataset(test_samples, test_labels)
-        test_dataloader = DataLoader(test_dataset)
+        training_dataloader = get_dataloader(config)
+        test_dataloader = get_dataloader(config)
 
         for epoch in range(config['EPOCHS']):
             logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
