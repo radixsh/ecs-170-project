@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
-from env import DEVICE 
+from env import DEVICE
 from distributions import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,10 @@ class MyDataset(Dataset):
         label = self.labels[index]
         return sample, label
 
+# TODO: Increase batch size (I think it's currently 1)
+# Batch size 1: gradient calculations might be noisy :(
+# Big batch size: potentially not enough compute :(
+# Medium batch size: good for implicit regularization :)
 def train_model(dataloader, model, loss_function, optimizer, device):
     model.train()
     size = len(dataloader.dataset)  # For debug logs
@@ -70,7 +74,7 @@ def test_model(dataloader, model, loss_function, device):
     test_loss /= len(dataloader)
     return test_loss
 
-def pipeline(model, setup):
+def pipeline(model, config):
     start = time.time()
 
     # Consistent initialization
@@ -79,50 +83,54 @@ def pipeline(model, setup):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
 
-    for run in range(setup['RUNS']):
+    # Optimizer can't be in the config dict because it depends on model params
+    optimizer = torch.optim.SGD(model.parameters(),
+                                lr=config['LEARNING_RATE'], foreach=True)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, foreach=True)
+    # optimizer = torch.optim.Adamw(model.parameters(), lr=LEARNING_RATE, foreach=True)
+    # optimizer = torch.optim.Adagrad(model.parameters(), lr=LEARNING_RATE, foreach=True)
+
+    # Loss function can't be in config dict because custom_loss_function.py
+    # depends on config dict to build the loss function
+    loss_function = CustomLoss()
+
+    for r in range(config['RUNS']):
         run_start = time.time()
 
-        # Rebuild model (and optimizer) each run
-        # input_size = SAMPLE_SIZE * NUM_DIMENSIONS
-        # output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
-        # model = build_model(input_size, output_size).to(DEVICE)
-        optimizer = torch.optim.SGD(model.parameters(), 
-                                    lr=setup['LEARNING_RATE'], foreach=True)
-        #optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, foreach=True)
-        #optimizer = torch.optim.Adamw(model.parameters(), lr=LEARNING_RATE, foreach=True)
-        #optimizer = torch.optim.Adagrad(model.parameters(), lr=LEARNING_RATE, foreach=True)
-
-        loss_function = CustomLoss()  # Define the loss function here
-
-        # Generate the entire dataset first
-        raw_data = generate_data(count=setup['TRAINING_SIZE'],
-                                 sample_size=setup['SAMPLE_SIZE'])
+        # Generate the dataset for this run
+        raw_data = generate_data(count=config['TRAINING_SIZE'],
+                                 sample_size=config['SAMPLE_SIZE'])
         samples = np.array([elem[0] for elem in raw_data])
         labels = np.array([elem[1] for elem in raw_data])
 
-        # Split the data set into training and validation sets for
-        # NUM_SPLITS-fold cross-validation.
-        # The entire dataset is randomly divided into NUM_SPLITS equal subsets
-        # (folds), each of which is used exactly once as validation while the
-        # k - 1 remaining folds form the training set.
-        # This reduces bias, gives our model more data to train on, and helps us
-        # evaluate our model's performance.
-        kf = KFold(n_splits=setup['NUM_SPLITS'], shuffle=True, random_state=42)
-        for epoch in range(setup['EPOCHS']):
-            for fold, (train_index, val_index) in enumerate(kf.split(samples)):
-                training_samples, validation_samples = samples[train_index], samples[val_index]
-                training_labels, validation_labels = labels[train_index], labels[val_index]
+        raw_training_data = generate_data(count=config['TRAINING_SIZE'],
+                                          sample_size=config['SAMPLE_SIZE'])
+        training_samples = np.array([elem[0] for elem in raw_training_data])
+        training_labels = np.array([elem[1] for elem in raw_training_data])
+        training_dataset = MyDataset(training_samples, training_labels)
+        training_dataloader = DataLoader(training_dataset)
 
-                training_dataset = MyDataset(training_samples, training_labels)
-                training_dataloader = DataLoader(training_dataset)
-                validation_dataset = MyDataset(validation_samples, validation_labels)
-                validation_dataloader = DataLoader(validation_dataset)
+        raw_test_data = generate_data(count=config['TEST_SIZE'],
+                                      sample_size=config['SAMPLE_SIZE'])
+        test_samples = np.array([elem[0] for elem in raw_test_data])
+        test_labels = np.array([elem[1] for elem in raw_test_data])
+        test_dataset = MyDataset(test_samples, test_labels)
+        test_dataloader = DataLoader(test_dataset)
 
-                # Train the model on the training data, and cross-validate
-                train_model(training_dataloader, model, loss_function, optimizer, DEVICE)
-                loss = test_model(validation_dataloader, model, loss_function, DEVICE)
-                logger.info(f"Epoch {epoch + 1}\tFold {fold + 1}\t"
-                            f"Avg loss (cross-validation phase): {loss}")
+        for epoch in range(config['EPOCHS']):
+            logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
+            train_model(training_dataloader, model, loss_function, optimizer, DEVICE)
+            test_model(test_dataloader, model, loss_function, DEVICE)
+
+        run_end = time.time()
+        logger.info(f"Finished run {r + 1} of {config['RUNS']} in " +
+                     f"{run_end - run_start:.2f} seconds")
+
+    end = time.time()
+    logger.info(f"Finished overall in {end - start:.2f} seconds")
+
+    return model.state_dict()
+
     '''
         # Test the model on the test data
         raw_test_data = generate_data(count=TEST_SIZE)
@@ -142,21 +150,14 @@ def pipeline(model, setup):
 
     torch.save(model.state_dict(), 'model_weights.pth')
 
-    # print(samples)
-    # print(labels)
-    # Performance metrics TESTING using standardized metrics;
-    # (i.e. accuracy, precision, recall, and F1 score):
+    # Performance metrics: accuracy, precision, recall, and F1 score
     accuracy = accuracy_score(test_labels, test_samples)
-    precision = precision_score(test_labels, test_samples) 
-    recall = recall_score(test_labels, test_samples) 
-    f1 = f1_score(test_labels, test_samples) 
+    precision = precision_score(test_labels, test_samples)
+    recall = recall_score(test_labels, test_samples)
+    f1 = f1_score(test_labels, test_samples)
 
-    print("Accuracy:", accuracy) 
-    print("Precision:", precision) 
-    print("Recall:", recall) 
-    print("F1-Score:", f1) 
+    print("Accuracy:", accuracy)
+    print("Precision:", precision)
+    print("Recall:", recall)
+    print("F1-Score:", f1)
     '''
-    return model.state_dict()
-
-if __name__ == "__main__":
-    pipeline()
