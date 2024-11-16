@@ -93,43 +93,8 @@ class CustomLoss(nn.Module):
         # Need to look up weights in dist_var_matrix
         dist_idxs = get_indices(dists=True,dims=dim_range)
         weights = self.get_weights(y[0][dist_idxs])
-        classification_loss = torch.dot(diff[dist_idxs],weights)    
-
-        # Average numerical loss of mean and stddev loss
-        regression_loss = (mean_loss + stddev_loss) / 2
-
-        # classification loss of 0 means loss = regression loss
-        # classification loss of 1 means loss -> infinity
-        return (regression_loss + CONFIG['ALPHA'] * classification_loss) / (1 - classification_loss)
-    
-class CustomLossMean(nn.Module):
-    def __init__(self):
-        super(CustomLoss, self).__init__()
-
-        # Number of distribution functions
-        self.num_dists = len(DISTRIBUTION_FUNCTIONS)
-
-    def forward(self, pred, y):
-        # Useful constant
-        dim_range = range(1,NUM_DIMENSIONS+1)
+        classification_loss = torch.dot(diff[dist_idxs],weights)   
         
-        # Absolute difference of vectors normalized by number of dimensions
-        diff = torch.abs(pred[0] - y[0]) / NUM_DIMENSIONS
-        
-        # Calculate MAE on means per dimension
-        mean_idxs = get_indices(mean=True, dims=dim_range)
-        mean_loss = torch.sum(diff[mean_idxs])
-
-        # Calculate MAE on stddevs per dimension
-        stddev_idxs = get_indices(stddev=True, dims=dim_range)
-        stddev_loss = torch.sum(diff[stddev_idxs])
-
-        # Approximate total variation distance between distributions
-        # Need to look up weights in dist_var_matrix
-        dist_idxs = get_indices(dists=True,dims=dim_range)
-        weights = self.get_weights(y[0][dist_idxs])
-        classification_loss = torch.dot(diff[dist_idxs],weights)    
-
         # Make various losses trivial if not in use
         if not self.use_mean:
             mean_loss = 0
@@ -145,5 +110,4 @@ class CustomLossMean(nn.Module):
 
         # classification loss of 0 means loss = regression loss
         # classification loss of 1 means loss -> infinity
-        # regression loss of 0 yields a curve like x/(1-x)
         return (regression_loss + CONFIG['ALPHA'] * classification_loss) / (1 - classification_loss)
