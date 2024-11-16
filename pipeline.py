@@ -3,11 +3,10 @@ import logging
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
-
-from custom_loss_function import CustomLoss
-from build_model import build_model
-from generate_data import generate_data, make_dataset
+from custom_functions import CustomLoss
+from generate_data import make_dataset
 from env import DEVICE, HYPERPARAMETER
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

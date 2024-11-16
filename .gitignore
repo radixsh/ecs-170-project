@@ -17,3 +17,6 @@ wheels/
 
 # models directory (too big to push)
 models/
+
+# vscode workspace file
+ecs-170-project.code-workspace

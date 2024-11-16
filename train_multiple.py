@@ -20,7 +20,7 @@ logger.addHandler(console_handler)
 def main():
     start = time.time()
 
-    hyperparams = [1e1, 1e2, 1e3, 1e4, 1e5, 1e6]
+    hyperparams = [1e1, 1e2, 1e3, 1e4]#, 1e5, 1e6]
     hyperparams = [int(i) for i in hyperparams]
 
     # Make sure the models directory exists

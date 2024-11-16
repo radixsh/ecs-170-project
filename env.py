@@ -1,10 +1,10 @@
-import torch
+# import torch
 DEVICE = (
-        "cuda"        # Use with large networks and good GPU; requires special torch install
-        if torch.cuda.is_available()
-        else "mps"    # Should be faster, but only works with Intel CPUs
-        if torch.backends.mps.is_available()
-        else
+        # "cuda"        # Use with large networks and good GPU; requires special torch install
+        # if torch.cuda.is_available()
+        # else "mps"    # Should be faster, but only works with Intel CPUs
+        # if torch.backends.mps.is_available()
+        # else
         "cpu"           # Fastest for small networks because moving stuff to GPU is slow
         )
 
