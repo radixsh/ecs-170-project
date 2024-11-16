@@ -12,7 +12,7 @@ NUM_DIMENSIONS = 1          # How many dimensions of data we're currently workin
 
 CONFIG = {
         "TRAINING_SIZE": 50,    # How many (data points, labels) examples to train on
-        "TEST_SIZE": 50,        # Equal to training size since we can generate arbitrary amounts of data
+        # "TEST_SIZE": 50,        # Equal to training size since we can generate arbitrary amounts of data
         "SAMPLE_SIZE": 10,      # Size of input layer
         "BATCH_SIZE": 32,       # How many examples to see before performing backpropagation
         "EPOCHS": 5,            # How many times to repeat the training process per generated dataset
@@ -21,3 +21,5 @@ CONFIG = {
         "ALPHA": 2,             # Increases how much of the loss calculation
                                 # comes from classification task. Should be > 0.
         }
+
+HYPERPARAMETER = "BATCH_SIZE"

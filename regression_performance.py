@@ -9,34 +9,31 @@ import re
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score
 from torch.utils.data import DataLoader
 
-from env import *
-from custom_loss_function import CustomLoss
+from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE
 from build_model import build_model
-from generate_data import generate_data
-from pipeline import pipeline, MyDataset
+from pipeline import pipeline, get_dataloader
 from distributions import DISTRIBUTION_FUNCTIONS
+from generate_data import MyDataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
-VARIABLE = "TRAINING_SIZE"
-
-def get_mae_mape_r2(model, desired) -> (float, float, float):
+def get_mae_mape_r2(model, desired):
     if desired == "mean":
         index = -2
     elif desired == "stddev":
         index = -1
+    else:
+        logger.warning(f"Passed unreadable string to get_mae_mape_r2(), "
+                    f"do you want mean or stddev?")
+        return
 
     # Test the model on the test data
-    raw_test_data = generate_data(count=CONFIG['TEST_SIZE'],
-                                  sample_size=CONFIG['SAMPLE_SIZE'])
-    test_samples = np.array([elem[0] for elem in raw_test_data])
-    test_labels = np.array([elem[1] for elem in raw_test_data])
-    test_dataset = MyDataset(test_samples, test_labels)
-    test_dataloader = DataLoader(test_dataset)
+    test_dataloader = get_dataloader(CONFIG, 'data/test_dataloader')
 
+    model.eval()
     actuals = []
     guesses = []
     with torch.no_grad():
@@ -57,7 +54,7 @@ def get_mae_mape_r2(model, desired) -> (float, float, float):
             guesses.append(predicted_value)
 
     return (mean_absolute_error(actuals, guesses),
-            mean_absolute_percentage_error(actuals, guesses), 
+            mean_absolute_percentage_error(actuals, guesses),
             r2_score(actuals, guesses))
 
 def create_png(name, x_values, means, stddevs):
@@ -66,7 +63,7 @@ def create_png(name, x_values, means, stddevs):
 
     # plt.gca().set_xscale('log')
     plt.xlim(0, max(x_values) * 1.1)
-    plt.xlabel(VARIABLE)
+    plt.xlabel(HYPERPARAMETER)
 
     both = means + stddevs + [0]
     plt.ylim(min(both) * 1.1, max(both) * 1.1)
@@ -74,13 +71,13 @@ def create_png(name, x_values, means, stddevs):
 
     plt.title(name)
     plt.legend(bbox_to_anchor=(1,1), loc="upper left")
-    plt.savefig(f"results/{VARIABLE.lower()}_{name.replace(' ', '_')}.png", bbox_inches="tight")
+    plt.savefig(f"results/{HYPERPARAMETER.lower()}_{name.replace(' ', '_')}.png", bbox_inches="tight")
     plt.show()
 
 # Goal: Graph how loss, R^2, and MAE varies with different sample sizes,
 # training sizes, epoch counts, and/or learning rate
 def main():
-    logger.info("Measuring MAE, MAPE, and R^22 for means and stddevs")
+    logger.info("Measuring MAE, MAPE, and R^2 for means and stddevs")
     start = time.time()
 
     # Make sure the 'results' directory exists (for png graphs of results)
@@ -94,7 +91,8 @@ def main():
     model_filenames = []
     for item in os.listdir(models_directory):
         fullpath = os.path.join(models_directory, item)
-        if os.path.isfile(fullpath):
+        filenameified = HYPERPARAMETER.lower().replace(' ', '_')
+        if os.path.isfile(fullpath) and filenameified in fullpath:
             model_filenames.append(fullpath)
     print(f'Analyzing {model_filenames}')
 
@@ -108,14 +106,14 @@ def main():
     for filename in model_filenames:
         model_start = time.time()
 
-        # Update CONFIG[VARIABLE] with the value from filename
+        # Update CONFIG[HYPERPARAMETER] with the value from filename
         match = re.search(r'(\d+).pth$', filename)
         if match:
             training_size = int(match.group(1))
             training_sizes.append(training_size)     # For matplotlib graphs
-            CONFIG[VARIABLE] = training_size
+            CONFIG[HYPERPARAMETER] = training_size
         else:
-            logger.info(f'(No {VARIABLE} detected in "{filename}", skipping)')
+            logger.info(f'(No {HYPERPARAMETER} detected in "{filename}", skipping)')
             continue
 
         # For each new sample size, re-initialize
@@ -141,7 +139,7 @@ def main():
         stddev_r2s.append(stddev_r2)
 
         model_end = time.time()
-        logger.info(f"{VARIABLE}={training_size}\t--> "
+        logger.info(f"{HYPERPARAMETER}={training_size}\t--> "
                     f"mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
                     f"\n\t\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
                     f"\n\t\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "

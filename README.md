@@ -1,24 +1,31 @@
-# ECS 170 AI Project
-We have several prototypes that
-identify the distribution family,
-mean, and standard deviation from which some samples were drawn. Trained with
-hyperparameters saved in `env.py`, each model's weights are uploaded here in
-`models/` subdirectory.
+# ECS 170 AI Project: Deep Learning for Meta-Statistical Inference
+**Quickstart**: Run `generate_data.py` first to generate data and save it into the `data`
+subdirectory. Then run `train_multiple.py` to train multiple models on different
+values of the hyperparameter set in `env.py` and save their weights into the
+`models` subdirectory. Then run `regression_performance.py` to measure the
+performance for guessing mean and standard deviation; the scatter-plots will be
+saved into the `results` subdirectory.
 
-The architecture is as follows:
-* Input layer of `SAMPLE_SIZE` units (which varies among the models in `models/`)
+**Background**: These neural nets identify the distribution family, mean, and standard deviation
+from which data points are drawn. Trained with hyperparameters saved in
+`env.py`, each model's weights are uploaded here in `models/` subdirectory.
+
+The general architecture is as follows:
+* Input layer of `SAMPLE_SIZE` units
 * Hidden layer of `SAMPLE_SIZE` units
-* Hidden layer of 30 units, using `ReLU` activation function
-* Hidden layer of 30 units, using `ReLU` activation function
+* 3 hidden layers of 30 units each, using `ReLU` activation function
 * Output layer of 11 * `NUM_DIMENSIONS=1` units (each of `NUM_DIMENSIONS`
-  dimensions has a probability vector indicating confidence that it's each of 9
-  distribution families, concatenated with the network's guesses for that
-  dimension's mean and standard deviation)
+  dimensions has a probability vector for distribution family, concatenated with
+  estimated mean and standard deviation)
 
 Next steps:
 - [x] Move on to more types of distributions
 - [x] Measure current performance (using some standardized method), generate
   some nice pretty graphs
+- [x] Hyperparameter tuning: Find best SAMPLE_SIZE (10)
+- [x] Hyperparameter tuning: Find best TRAINING_SIZE (100)
+- [ ] **Hyperparameter tuning: Find best BATCH_SIZE**
+- [ ] Hyperparameter tuning: Find best EPOCHS
 - [ ] Train the model separately on different runs, and save only the best one
   to `model_weights.pth` (currently, it's saving the last run's weights, not the
   best one)
@@ -28,53 +35,53 @@ Next steps:
 - [ ] Move on to multi-dimensional data
 
 ## Main useful files
-### train_multiple.py
-Trains multiple models and saves each one's weights into `models/` subdirectory.
-Each model has hyperparameters set in `env.py`, except `SAMPLE_SIZE` which is
-different for each model.
+### `train_multiple.py`
+Trains multiple models and saves each one's weights into `models` subdirectory.
+Each model has hyperparameters set in `env.py`.
 
-### regression_performance.py
-Measures regression performance of each model in `models/` wrt mean and stddev
-guesses (hence regression only, not classification). Performance is measured in
-terms of MAE, MAPE, and R^2. The performance is graphed as scatter plots in
-`results/` subdirectory.
-
-### model_pipeline.py
-Trains a new model using hyperparameters passed in via `setup` argument. The
-model is trained on newly generated data using cross-validation (which we might
-get rid of, though, because we have theoretically infinite quantities of new
-data). The finished model's connection weights are returned, and then
-`train_multiple` is able to catch that return value and save each different
-model's weights out to a different filename in `models/`.
+### `regression_performance.py`
+Measures regression performance of each model in `models` directory wrt mean and
+stddev guesses (hence regression only, not classification). Performance is
+measured in terms of MAE, MAPE, and R^2. The performance is graphed as scatter
+plots in `results/` subdirectory.
 
 ## Documentation for supporting files
-### loss_fn.py
+### `pipeline.py`
+Trains a new model using hyperparameters passed in via the `config` parameter.
+The model is trained on either data from the `data` directory or on newly
+generated data (which it then saves out to the `data` directory to save time
+later). The finished model's connection weights are returned, and then
+`train_multiple.py` is able to catch this and save it to the `models` directory.
+
+### `custom_loss_fn.py`
 Provides a custom loss function that appropriately deals with both categorical
-data (distribution family) and numerical data (mean, standard deviation). The
-custom loss function is set in `env.py` and called during training/testing.
+data (distribution family) and numerical data (mean and standard deviation).
 
 In the loss function, we call `softmax()` on each one-hot guess individually to
 convert it into what looks like a probability measure. This gets the loss
 function working. However, since this post-processing is happening only in the
 loss function and not in the model itself, if we ever want to directly read the
 outputs of the model, then we have to also call `softmax()` there too.
-We tried doing `softmax()` in `train.py`, but
-PyTorch said it couldn't figure out what the loss function's `backward()` should
-be. (For context, the gradient function `backward()` (which is the partial
-derivative wrt output), is usually calculated automatically.)
-We may try to put this `softmax()` thing at the end of the model itself, perhaps
-as some sort of pseudo–activation function processing the model's output layer.
 
+We tried doing `softmax()` in `train.py`, but PyTorch said it couldn't figure
+out what the loss function's `backward()` should be. (For context, the gradient
+function `backward()` (which is the partial derivative wrt output), is usually
+calculated automatically.) We may try to put this `softmax()` thing at the end
+of the model itself, perhaps as some sort of pseudo–activation function
+processing the model's output layer.
 
-### generate_data.py
+### `generate_data.py`
 `generate_data.py` provides a wrapper around functions from `distributions.py`
-for generating distributions from various families. (We might remove this file.)
+for generating distributions from various families. When run as a standalone
+script, it generates training and test data and puts it into the `data`
+directory.
 
-Each entry in the returned list is an ordered tuple whose first entry is a list
-of data points and whose second entry is a list of label data. The label data is
-organized in the same way as the output layer of the neural network: the first
-`NUM_DISTRIBUTIONS=9` entries are a one-hot vector indicating which distribution
-family it came from, and the last two entries are mean and standard deviation.
+Each entry in the list returned by `generate_data()` is an ordered tuple whose
+first entry is a list of data points and whose second entry is a list of label
+data. The label data is organized in the same way as the output layer of the
+neural network: the first `NUM_DISTRIBUTIONS=9` entries are a one-hot vector
+indicating which distribution family it came from, and the last two entries are
+mean and standard deviation.
 
 For instance, this dataset has 9 entries, one example per distribution family.
 The first entry in the dataset indicates that the points `[1.29251874e-05,
@@ -102,71 +109,6 @@ a beta distribution with `mean=0.09957` and `stddev=0.0873`.
  (array([ 5.87227715, 11.89298907,  5.25918688, 10.20213871, 10.24144629]),
   [0, 0, 0, 0, 0, 0, 0, 0, 1, 8.531292456133006, 3.6040852489596937])]
 ```
-
-### performance_plot.py
-Generates a graph of some hardcoded data from the performance analysis section
-below. However, this needs to be standardized and updated.
-
-# Performance
-### Some hyperparameters
-```python
-TRAINING_SIZE = 1000
-TEST_SIZE = 200
-SAMPLE_SIZE = 50
-RUNS = 10
-EPOCHS = 10
-
-LOSS_FN = nn.L1Loss()
-```
-
-50x50x4: 1 hidden layer of 50 units, with ReLU()
-* Training time: INFO:main:Finished overall in 209.98 seconds
-* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.2968025193359936
-
-50x20x4: 1 hidden layer of 20 units, with ReLU()
-* Training time: INFO:main:Finished overall in 251.66 seconds
-* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.3921664776731049
-
-50x50x10x4: 2 hidden layers, of 50 and 10 units each, both ReLU()'d
-* Training time: INFO:main:Finished overall in 250.18 seconds
-* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.214894094788935
-
-_Conclusion: 2 hidden layers is better than 1_
-
-50x50x10x4: 2 hidden layers, of 50 and 10 units each, no ReLU()
-* Training time: INFO:main:Finished overall in 245.14 seconds
-* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.4624589592027477
-
-_Conclusion: ReLU helps_
-
-### Another run, with different hyperparameters
-```python
-TRAINING_SIZE = 1000
-TEST_SIZE = 100
-SAMPLE_SIZE = 20
-RUNS = 10
-EPOCHS = 10
-
-LOSS_FN = nn.L1Loss()
-```
-20x64x32x4: 2 hidden layers, 64 and 32 units, both ReLU()'d:
-* Training time: INFO:main:Finished overall in 250.36 seconds
-* Loss: INFO:analyze_performance:Avg loss over 20 tests: 0.23489890832826504
-
-### Another run, with different hyperparameters and also a new loss function (sorry)
-```python
-TRAINING_SIZE = 1000
-TEST_SIZE = int(TRAINING_SIZE * 0.2 / 0.8) # Fixed at ~20% of training + test
-SAMPLE_SIZE = 30
-RUNS = 3
-EPOCHS = 5
-
-# Also using James' new loss function rather than MSE or MAE, so loss is higher
-LOSS_FN = CustomLoss()
-```
-30x64x32x4: 2 hidden layers, 64 and 32 units, both ReLU()'d:
-* Training time: Finished 3 runs in 231.50 seconds
-* Loss: Avg loss over 20 tests: 0.31893037010598924
 
 # Resources
 * https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html

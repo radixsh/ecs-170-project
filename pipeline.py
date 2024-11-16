@@ -8,13 +8,12 @@ from sklearn.model_selection import KFold
 
 from custom_loss_function import CustomLoss
 from build_model import build_model
-from generate_data import generate_data
+from generate_data import generate_data, MyDataset, make_dataloader
 from env import DEVICE
-from dataset import MyDataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-console_handler = logging.NullHandler()
+console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
 # TODO: Increase batch size (I think it's currently 1)
@@ -61,19 +60,18 @@ def test_model(dataloader, model, loss_function, device):
     test_loss /= len(dataloader)
     return test_loss
 
-def get_dataloader(config, filename=None) -> DataLoader:
-    if filename:
+def get_dataloader(config, filename=None):
+    try:
         dataloader = torch.load(filename)
-        return dataloader
-
-    else:
-        raw_data = generate_data(count=config['TRAINING_SIZE'],
-                                 sample_size=config['SAMPLE_SIZE'])
-        samples = np.array([elem[0] for elem in raw_data])
-        labels = np.array([elem[1] for elem in raw_data])
-
-        dataset = MyDataset(samples, labels)
-        dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
+        if isinstance(dataloader, DataLoader):
+            logger.debug(f"Using DataLoader from {filename}")
+            return dataloader
+    except:
+        # If no filename is passed in, the file does not exist, or the file's
+        # contents do not represent a DataLoader as expected, then generate some
+        # new data, and write it out to the given filename
+        logger.debug(f'Generating fresh data...')
+        dataloader = make_dataloader(filename)
         return dataloader
 
 def pipeline(model, config):

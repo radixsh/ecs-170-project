@@ -6,10 +6,11 @@ import time
 import torch
 import os
 
-from env import NUM_DIMENSIONS, DEVICE, CONFIG
+from env import NUM_DIMENSIONS, DEVICE, CONFIG, HYPERPARAMETER
 from build_model import build_model
 from pipeline import pipeline
 from distributions import DISTRIBUTION_FUNCTIONS
+from generate_data import MyDataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -20,7 +21,7 @@ logger.addHandler(console_handler)
 def main():
     start = time.time()
 
-    training_sizes = [100]#, 100, 500, 1000, 2000, 4000, 8000, 10000]
+    hyperparams = [100000, 1000000, 10000000, 100000000]#1, 10, 100, 1000, 10000, 100000]#, 100, 500, 1000, 2000, 4000, 8000, 10000]
 
     # Make sure the models directory exists
     models_directory = 'models'
@@ -28,13 +29,14 @@ def main():
 
     # Filenames for various models
     dests = []
-    for i in training_sizes:
-        dests.append(f'{models_directory}/weights_training_size_{i}.pth')
+    for i in hyperparams:
+        label = HYPERPARAMETER.lower().replace(' ', '_')
+        dests.append(f'{models_directory}/weights_{label}_{i}.pth')
 
     # Train one model per training_size
-    for i, training_size in enumerate(training_sizes):
+    for i, hyperparam in enumerate(hyperparams):
         # Update TRAINING_SIZE in the dict from env.py
-        CONFIG['TRAINING_SIZE'] = training_size
+        CONFIG[HYPERPARAMETER] = hyperparam
 
         # Initialize a new neural net
         input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
@@ -42,7 +44,7 @@ def main():
         model = build_model(input_size, output_size).to(DEVICE)
 
         # Train the model anew, and save the resulting model's weights out
-        logger.debug(f"Training model with TRAINING_SIZE={training_size}...")
+        logger.debug(f"Training model with {HYPERPARAMETER}={hyperparam}...")
         train_start = time.time()
 
         model_weights = pipeline(model, CONFIG)
