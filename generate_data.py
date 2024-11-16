@@ -2,7 +2,7 @@ import logging
 import os
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import time
 
 from distributions import DISTRIBUTION_FUNCTIONS
@@ -31,17 +31,11 @@ def generate_data(count, sample_size):
 
     # Generate 'count' examples uniformly at random (before, it was 9 * 'count')
     for _ in range(count):
-        # List of tuples:
-        # [('normal', normal()), ('exponential', exponential())], etc
         items = list(DISTRIBUTION_FUNCTIONS.items())
-
         choice = np.random.choice(len(items))
         _, dist_func = items[choice]
         points, labels = dist_func(sample_size)
         data.append((points, labels))
-        # for dist_name, dist_func in DISTRIBUTION_FUNCTIONS.items():
-        #     points, labels = dist_func(sample_size)
-        #     data.append((points, labels))
     return data
 
 def make_dataset(filename):
@@ -52,7 +46,6 @@ def make_dataset(filename):
     samples = np.array([elem[0] for elem in raw_data])
     labels = np.array([elem[1] for elem in raw_data])
     dataset = MyDataset(samples, labels)
-    # dataloader = DataLoader(dataset, batch_size=CONFIG['BATCH_SIZE'])
     torch.save(dataset, filename)
 
     end = time.time()

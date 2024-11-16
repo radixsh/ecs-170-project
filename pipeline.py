@@ -6,11 +6,11 @@ from torch.utils.data import DataLoader, Dataset
 
 from custom_loss_function import CustomLoss
 from build_model import build_model
-from generate_data import generate_data, MyDataset, make_dataset
+from generate_data import generate_data, make_dataset
 from env import DEVICE, HYPERPARAMETER
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
