@@ -30,7 +30,8 @@ def get_mae_mape_r2(model, desired):
                        f"do you want mean or stddev?")
         return
 
-    test_dataloader = get_dataloader(CONFIG, 'data/test_dataloader')
+    test_dataloader = get_dataloader(CONFIG, 'data/test_dataloader',
+                                     require_match=False)
     model.eval()
     actuals = []
     guesses = []
@@ -56,11 +57,20 @@ def get_mae_mape_r2(model, desired):
             r2_score(actuals, guesses))
 
 def create_png(name, x_values, means, stddevs):
+    both = means + stddevs + [0]
+    plt.ylim(min(both) * 1.1, max(both) * 1.1)
+    plt.ylabel(name)
+
     x_values = np.float64(x_values)
+    sorted_indices = np.argsort(x_values)
+    x_values = x_values[sorted_indices]
+    means = np.array(means)[sorted_indices]
+    stddevs = np.array(stddevs)[sorted_indices]
 
     plt.scatter(x_values, means, color="royalblue", label="Means")
     mean_slope, mean_intercept = np.polyfit(x_values, means, deg=1)
-    mean_trend = mean_slope * x_values + mean_intercept
+    # mean_trend = mean_slope * x_values + mean_intercept
+    mean_trend = np.polyval([mean_slope, mean_intercept], x_values)
     plt.plot(x_values, mean_trend, color="royalblue",
              label=f'Mean slope: {mean_slope}')
 
@@ -72,10 +82,6 @@ def create_png(name, x_values, means, stddevs):
 
     plt.gca().set_xscale('log')
     plt.xlabel(HYPERPARAMETER)
-
-    both = means + stddevs + [0]
-    plt.ylim(min(both) * 1.1, max(both) * 1.1)
-    plt.ylabel(name)
 
     plt.title(name)
     plt.legend(bbox_to_anchor=(1,1), loc="upper left")
@@ -111,16 +117,16 @@ def main():
     stddev_mapes = []
     mean_r2s = []
     stddev_r2s = []
-    training_sizes = []       # For matplotlib graphs
+    hyperparams = []       # For matplotlib graphs
     for filename in model_filenames:
         model_start = time.time()
 
         # Update CONFIG[HYPERPARAMETER] with the value from filename
         match = re.search(r'(\d+).pth$', filename)
         if match:
-            training_size = int(match.group(1))
-            training_sizes.append(training_size)     # For matplotlib graphs
-            CONFIG[HYPERPARAMETER] = training_size
+            hyperparam = int(match.group(1))
+            hyperparams.append(hyperparam)     # For matplotlib graphs
+            CONFIG[HYPERPARAMETER] = hyperparam
         else:
             logger.info(f'(No {HYPERPARAMETER} detected in "{filename}", skipping)')
             continue
@@ -148,7 +154,7 @@ def main():
         stddev_r2s.append(stddev_r2)
 
         model_end = time.time()
-        logger.info(f"{HYPERPARAMETER}={training_size}\t--> "
+        logger.info(f"{HYPERPARAMETER}={hyperparam}\t--> "
                     f"mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
                     f"\n\t\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
                     f"\n\t\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "
@@ -158,11 +164,11 @@ def main():
     logger.info(f"Finished collecting data in {end - start:.2f} seconds")
 
     create_png("MAE (mean average error)",
-               training_sizes, mean_maes, stddev_maes)
+               hyperparams, mean_maes, stddev_maes)
     create_png("MAPE (mean average percentage error)",
-               training_sizes, mean_mapes, stddev_mapes)
+               hyperparams, mean_mapes, stddev_mapes)
     create_png("R^2 (correlation coefficient)",
-               training_sizes, mean_r2s, stddev_r2s)
+               hyperparams, mean_r2s, stddev_r2s)
 
 if __name__ == "__main__":
     main()

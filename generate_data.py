@@ -49,6 +49,8 @@ def make_dataloader(filename):
                 f"to {filename} in {end - start:.2f} seconds "
                 f"(BATCH_SIZE={CONFIG['BATCH_SIZE']})")
 
+    return dataloader
+
 # If running this file directly as a script, then generate some training
 # examples and save them to a file for later use
 if __name__ == "__main__":

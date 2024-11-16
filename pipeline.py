@@ -3,8 +3,6 @@ import logging
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
-from sklearn.model_selection import KFold
-# from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from custom_loss_function import CustomLoss
 from build_model import build_model
@@ -60,11 +58,18 @@ def test_model(dataloader, model, loss_function, device):
     test_loss /= len(dataloader)
     return test_loss
 
-def get_dataloader(config, filename=None):
+def get_dataloader(config, filename=None, require_match=True):
     try:
         dataloader = torch.load(filename)
         logger.debug(f"Item loaded from {filename}: {type(dataloader)}")
-        if isinstance(dataloader, DataLoader):
+        logger.debug(f"dataloader.batch_size = {config['BATCH_SIZE']}")
+        logger.debug(f"len(dataloader.dataset) = {config['TRAINING_SIZE']}")
+        if not require_match:
+            logger.debug(f"Using DataLoader from {filename}")
+            return dataloader
+        if isinstance(dataloader, DataLoader) \
+                and dataloader.batch_size == config['BATCH_SIZE'] \
+                and len(dataloader.dataset) == config['TRAINING_SIZE']:
             logger.debug(f"Using DataLoader from {filename}")
             return dataloader
     except:
@@ -78,7 +83,7 @@ def get_dataloader(config, filename=None):
     return dataloader
 
 def pipeline(model, config):
-    logger.debug(f'Training with config: {config}')
+    logger.info(f'Training with config: {config}')
     start = time.time()
 
     # Consistent initialization
@@ -102,7 +107,6 @@ def pipeline(model, config):
         run_start = time.time()
 
         train_dataloader = get_dataloader(config, 'data/train_dataloader')
-        logger.debug(type(train_dataloader))
         test_dataloader = get_dataloader(config, 'data/test_dataloader')
 
         for epoch in range(config['EPOCHS']):
@@ -111,11 +115,11 @@ def pipeline(model, config):
             test_model(test_dataloader, model, loss_function, DEVICE)
 
         run_end = time.time()
-        logger.info(f"Finished run {r + 1} of {config['RUNS']} in " +
+        logger.debug(f"Finished run {r + 1} of {config['RUNS']} in " +
                      f"{run_end - run_start:.2f} seconds")
 
     end = time.time()
-    logger.info(f"Finished overall in {end - start:.2f} seconds")
+    logger.info(f"Finished training pipeline in {end - start:.2f} seconds")
 
     return model.state_dict()
 
