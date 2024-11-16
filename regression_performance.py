@@ -10,7 +10,6 @@ from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error,
 from torch.utils.data import DataLoader
 
 from env import *
-from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
 from pipeline import pipeline, MyDataset
@@ -23,7 +22,7 @@ logger.addHandler(console_handler)
 
 VARIABLE = "TRAINING_SIZE"
 
-def get_mae_mape_r2(model, desired) -> (float, float):
+def get_mae_mape_r2(model, desired):
     if desired == "mean":
         index = -2
     elif desired == "stddev":
