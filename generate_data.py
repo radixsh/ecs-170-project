@@ -19,6 +19,15 @@ def generate_data(count, sample_size):
             data.append((points, labels))
     return data
 
+def make_dataloader(filename, config, count):
+    # https://pytorch.org/docs/stable/generated/torch.save.html
+    raw_data = generate_data(count=count, sample_size=CONFIG['SAMPLE_SIZE'])
+    samples = np.array([elem[0] for elem in raw_data])
+    labels = np.array([elem[1] for elem in raw_data])
+    dataset = MyDataset(samples, labels)
+    dataloader = DataLoader(dataset, batch_size=CONFIG['BATCH_SIZE'])
+    torch.save(dataloader, filename) 
+
 # If running this file directly as a script, then generate some training
 # examples and save them to a file for later use
 if __name__ == "__main__":
@@ -26,23 +35,5 @@ if __name__ == "__main__":
     data_directory = 'data'
     os.makedirs(data_directory, exist_ok=True)
 
-    # https://pytorch.org/docs/stable/generated/torch.save.html
-    raw_train_data = generate_data(count=CONFIG['TRAINING_SIZE'],
-                                   sample_size=CONFIG['SAMPLE_SIZE'])
-    train_samples = np.array([elem[0] for elem in raw_train_data])
-    train_labels = np.array([elem[1] for elem in raw_train_data])
-    train_dataset = MyDataset(train_samples, train_labels)
-    train_dataloader = DataLoader(train_dataset, batch_size=CONFIG['BATCH_SIZE'])
-    torch.save(train_dataloader, 'data/train_dataloader')
-
-    raw_test_data = generate_data(count=CONFIG['TRAINING_SIZE'],
-                                  sample_size=CONFIG['SAMPLE_SIZE'])
-    test_samples = np.array([elem[0] for elem in raw_test_data])
-    test_labels = np.array([elem[1] for elem in raw_test_data])
-    test_dataset = MyDataset(test_samples, test_labels)
-    test_dataloader = DataLoader(test_dataset, batch_size=CONFIG['BATCH_SIZE'])
-    torch.save(test_dataloader, 'data/test_dataloader')
-
-    print(f"Generated {CONFIG['TRAINING_SIZE']} training examples in "
-          f"'data/train_dataloader' and {CONFIG['TEST_SIZE']} test examples in "
-          f"'data/test_dataloader'")
+    make_dataloader('data/train_dataloader', CONFIG, CONFIG['TRAINING_SIZE'])
+    make_dataloader('data/test_dataloader', CONFIG, CONFIG['TEST_SIZE'])
