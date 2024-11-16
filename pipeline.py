@@ -2,7 +2,7 @@ import time
 import logging
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import KFold
 # from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
@@ -63,18 +63,22 @@ def test_model(dataloader, model, loss_function, device):
 def get_dataloader(config, filename=None):
     try:
         dataloader = torch.load(filename)
+        logger.debug(f"Item loaded from {filename}: {type(dataloader)}")
         if isinstance(dataloader, DataLoader):
             logger.debug(f"Using DataLoader from {filename}")
             return dataloader
     except:
-        # If no filename is passed in, the file does not exist, or the file's
-        # contents do not represent a DataLoader as expected, then generate some
-        # new data, and write it out to the given filename
-        logger.debug(f'Generating fresh data...')
-        dataloader = make_dataloader(filename)
-        return dataloader
+        pass
+
+    # If no filename is passed in, the file does not exist, or the file's
+    # contents do not represent a DataLoader as expected, then generate some
+    # new data, and write it out to the given filename
+    logger.debug(f'Generating fresh data...')
+    dataloader = make_dataloader(filename)
+    return dataloader
 
 def pipeline(model, config):
+    logger.debug(f'Training with config: {config}')
     start = time.time()
 
     # Consistent initialization
@@ -98,6 +102,7 @@ def pipeline(model, config):
         run_start = time.time()
 
         train_dataloader = get_dataloader(config, 'data/train_dataloader')
+        logger.debug(type(train_dataloader))
         test_dataloader = get_dataloader(config, 'data/test_dataloader')
 
         for epoch in range(config['EPOCHS']):

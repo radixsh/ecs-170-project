@@ -27,12 +27,10 @@ def get_mae_mape_r2(model, desired):
         index = -1
     else:
         logger.warning(f"Passed unreadable string to get_mae_mape_r2(), "
-                    f"do you want mean or stddev?")
+                       f"do you want mean or stddev?")
         return
 
-    # Test the model on the test data
     test_dataloader = get_dataloader(CONFIG, 'data/test_dataloader')
-
     model.eval()
     actuals = []
     guesses = []
@@ -58,11 +56,21 @@ def get_mae_mape_r2(model, desired):
             r2_score(actuals, guesses))
 
 def create_png(name, x_values, means, stddevs):
-    plt.scatter(x_values, means, color="blue", label="Means")
-    plt.scatter(x_values, stddevs, color="orange", label="Stddevs")
+    x_values = np.float64(x_values)
 
-    # plt.gca().set_xscale('log')
-    plt.xlim(0, max(x_values) * 1.1)
+    plt.scatter(x_values, means, color="royalblue", label="Means")
+    mean_slope, mean_intercept = np.polyfit(x_values, means, deg=1)
+    mean_trend = mean_slope * x_values + mean_intercept
+    plt.plot(x_values, mean_trend, color="royalblue",
+             label=f'Mean slope: {mean_slope}')
+
+    plt.scatter(x_values, stddevs, color="tomato", label="Stddevs")
+    stddev_slope, stddev_intercept = np.polyfit(x_values, stddevs, deg=1)
+    stddev_trend = stddev_slope * x_values + stddev_intercept
+    plt.plot(x_values, stddev_trend, color="tomato",
+             label=f'Stddev slope: {stddev_slope}')
+
+    plt.gca().set_xscale('log')
     plt.xlabel(HYPERPARAMETER)
 
     both = means + stddevs + [0]
@@ -71,7 +79,8 @@ def create_png(name, x_values, means, stddevs):
 
     plt.title(name)
     plt.legend(bbox_to_anchor=(1,1), loc="upper left")
-    plt.savefig(f"results/{HYPERPARAMETER.lower()}_{name.replace(' ', '_')}.png", bbox_inches="tight")
+    destination = f"results/{HYPERPARAMETER.lower()}_{name.replace(' ', '_')}.png"
+    plt.savefig(destination, bbox_inches="tight")
     plt.show()
 
 # Goal: Graph how loss, R^2, and MAE varies with different sample sizes,

@@ -3,6 +3,7 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+import time
 
 from distributions import DISTRIBUTION_FUNCTIONS
 from env import CONFIG
@@ -34,13 +35,19 @@ def generate_data(count, sample_size):
     return data
 
 def make_dataloader(filename):
+    start = time.time()
+
     raw_data = generate_data(count=CONFIG['TRAINING_SIZE'], sample_size=CONFIG['SAMPLE_SIZE'])
     samples = np.array([elem[0] for elem in raw_data])
     labels = np.array([elem[1] for elem in raw_data])
     dataset = MyDataset(samples, labels)
     dataloader = DataLoader(dataset, batch_size=CONFIG['BATCH_SIZE'])
     torch.save(dataloader, filename)
-    logger.info(f"Wrote {CONFIG['TRAINING_SIZE']} examples out to {filename}")
+
+    end = time.time()
+    logger.info(f"Generated and saved {CONFIG['TRAINING_SIZE']} examples out "
+                f"to {filename} in {end - start:.2f} seconds "
+                f"(BATCH_SIZE={CONFIG['BATCH_SIZE']})")
 
 # If running this file directly as a script, then generate some training
 # examples and save them to a file for later use
