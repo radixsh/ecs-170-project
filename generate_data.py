@@ -42,3 +42,7 @@ if __name__ == "__main__":
     test_dataset = MyDataset(test_samples, test_labels)
     test_dataloader = DataLoader(test_dataset, batch_size=CONFIG['BATCH_SIZE'])
     torch.save(test_dataloader, 'data/test_dataloader')
+
+    print(f"Generated {CONFIG['TRAINING_SIZE']} training examples in "
+          f"'data/train_dataloader' and {CONFIG['TEST_SIZE']} test examples in "
+          f"'data/test_dataloader'")

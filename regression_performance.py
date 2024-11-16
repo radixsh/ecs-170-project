@@ -23,7 +23,7 @@ logger.addHandler(console_handler)
 
 VARIABLE = "TRAINING_SIZE"
 
-def get_mae_mape_r2(model, desired) -> (float, float):
+def get_mae_mape_r2(model, desired) -> (float, float, float):
     if desired == "mean":
         index = -2
     elif desired == "stddev":

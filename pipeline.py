@@ -4,14 +4,13 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+# from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from custom_loss_function import CustomLoss
 from build_model import build_model
 from generate_data import generate_data
 from env import DEVICE
 from dataset import MyDataset
-from distributions import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
