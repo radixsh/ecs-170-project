@@ -30,7 +30,7 @@ def get_mae_mape_r2(model, desired):
                        f"do you want mean or stddev?")
         return
 
-    test_dataloader = get_dataloader(CONFIG, 'data/test_dataloader',
+    test_dataloader = get_dataloader(CONFIG, 'data/test_dataset',
                                      require_match=False)
     model.eval()
     actuals = []
@@ -69,7 +69,7 @@ def create_png(name, x_values, means, stddevs):
 
     plt.scatter(x_values, means, color="royalblue", label="Means")
     mean_slope, mean_intercept = np.polyfit(x_values, means, deg=1)
-    # mean_trend = mean_slope * x_values + mean_intercept
+    # Line of best fit only looks bent because of logarithmic scaling
     mean_trend = np.polyval([mean_slope, mean_intercept], x_values)
     plt.plot(x_values, mean_trend, color="royalblue",
              label=f'Mean slope: {mean_slope}')
@@ -118,6 +118,7 @@ def main():
     mean_r2s = []
     stddev_r2s = []
     hyperparams = []       # For matplotlib graphs
+    count = 0
     for filename in model_filenames:
         model_start = time.time()
 
@@ -127,6 +128,7 @@ def main():
             hyperparam = int(match.group(1))
             hyperparams.append(hyperparam)     # For matplotlib graphs
             CONFIG[HYPERPARAMETER] = hyperparam
+            count += 1
         else:
             logger.info(f'(No {HYPERPARAMETER} detected in "{filename}", skipping)')
             continue
@@ -161,7 +163,9 @@ def main():
                     f"(Finished in {model_end - model_start:.2f} seconds)")
 
     end = time.time()
-    logger.info(f"Finished collecting data in {end - start:.2f} seconds")
+    logger.info(f"Analyzed {count} models in {end - start:.2f} seconds")
+    if count == 0:
+        return
 
     create_png("MAE (mean average error)",
                hyperparams, mean_maes, stddev_maes)

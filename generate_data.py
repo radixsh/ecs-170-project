@@ -28,28 +28,39 @@ class MyDataset(Dataset):
 
 def generate_data(count, sample_size):
     data = []
+
+    # Generate 'count' examples uniformly at random (before, it was 9 * 'count')
     for _ in range(count):
-        for dist_name, dist_func in DISTRIBUTION_FUNCTIONS.items():
-            points, labels = dist_func(sample_size)
-            data.append((points, labels))
+        # List of tuples:
+        # [('normal', normal()), ('exponential', exponential())], etc
+        items = list(DISTRIBUTION_FUNCTIONS.items())
+
+        choice = np.random.choice(len(items))
+        _, dist_func = items[choice]
+        points, labels = dist_func(sample_size)
+        data.append((points, labels))
+        # for dist_name, dist_func in DISTRIBUTION_FUNCTIONS.items():
+        #     points, labels = dist_func(sample_size)
+        #     data.append((points, labels))
     return data
 
-def make_dataloader(filename):
+def make_dataset(filename):
     start = time.time()
 
-    raw_data = generate_data(count=CONFIG['TRAINING_SIZE'], sample_size=CONFIG['SAMPLE_SIZE'])
+    raw_data = generate_data(count=CONFIG['TRAINING_SIZE'],
+                             sample_size=CONFIG['SAMPLE_SIZE'])
     samples = np.array([elem[0] for elem in raw_data])
     labels = np.array([elem[1] for elem in raw_data])
     dataset = MyDataset(samples, labels)
-    dataloader = DataLoader(dataset, batch_size=CONFIG['BATCH_SIZE'])
-    torch.save(dataloader, filename)
+    # dataloader = DataLoader(dataset, batch_size=CONFIG['BATCH_SIZE'])
+    torch.save(dataset, filename)
 
     end = time.time()
     logger.info(f"Generated and saved {CONFIG['TRAINING_SIZE']} examples out "
                 f"to {filename} in {end - start:.2f} seconds "
                 f"(BATCH_SIZE={CONFIG['BATCH_SIZE']})")
 
-    return dataloader
+    return dataset
 
 # If running this file directly as a script, then generate some training
 # examples and save them to a file for later use
@@ -57,5 +68,5 @@ if __name__ == "__main__":
     data_directory = 'data'
     os.makedirs(data_directory, exist_ok=True)
 
-    make_dataloader('data/train_dataloader')
-    make_dataloader('data/test_dataloader')
+    make_dataset('data/train_dataset')
+    make_dataset('data/test_dataset')

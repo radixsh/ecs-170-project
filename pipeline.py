@@ -6,11 +6,11 @@ from torch.utils.data import DataLoader, Dataset
 
 from custom_loss_function import CustomLoss
 from build_model import build_model
-from generate_data import generate_data, MyDataset, make_dataloader
-from env import DEVICE
+from generate_data import generate_data, MyDataset, make_dataset
+from env import DEVICE, HYPERPARAMETER
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
@@ -32,9 +32,10 @@ def train_model(dataloader, model, loss_function, optimizer, device):
         optimizer.zero_grad()
 
         if batch % 100 == 0:
-            loss = loss.item()
-            current = (batch + 1) * len(X)
-            logger.debug(f"Loss after training: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            loss_value = loss.item()
+            current = batch * dataloader.batch_size + len(X)#(batch + 1) * len(X)
+            logger.debug(f"Loss after batch {batch}:\t"
+                         f"{loss_value:>7f}  [{current:>5d}/{size:>5d}]")
 
 def test_model(dataloader, model, loss_function, device):
     model.eval()
@@ -47,43 +48,40 @@ def test_model(dataloader, model, loss_function, device):
             X, y = X.to(device).float(), y.to(device).float()
 
             pred = model(X)
-            logger.debug(f"pred: \t{pred}")
-            logger.debug(f"y: \t\t{y}")
+            # logger.debug(f"pred: \t{pred}")
+            # logger.debug(f"y: \t\t{y}")
 
             # TODO: Implement metrics with guesses and actuals?
 
             test_loss += loss_function(pred, y).item()
-            logger.debug(f"loss: \t{loss_function(pred,y)}")
+            # logger.debug(f"loss: \t{loss_function(pred,y)}")
 
     test_loss /= len(dataloader)
     return test_loss
 
-def get_dataloader(config, filename=None, require_match=True):
+def get_dataloader(config, filename=None, require_match=False):
     try:
-        dataloader = torch.load(filename)
-        logger.debug(f"Item loaded from {filename}: {type(dataloader)}")
-        logger.debug(f"dataloader.batch_size = {config['BATCH_SIZE']}")
-        logger.debug(f"len(dataloader.dataset) = {config['TRAINING_SIZE']}")
-        if not require_match:
-            logger.debug(f"Using DataLoader from {filename}")
-            return dataloader
-        if isinstance(dataloader, DataLoader) \
-                and dataloader.batch_size == config['BATCH_SIZE'] \
-                and len(dataloader.dataset) == config['TRAINING_SIZE']:
-            logger.debug(f"Using DataLoader from {filename}")
-            return dataloader
-    except:
-        pass
+        dataset = torch.load(filename)
+        is_acceptable_size = (len(dataset) == config['TRAINING_SIZE'] \
+                or not require_match)
+
+        if isinstance(dataset, Dataset) and is_acceptable_size:
+            logger.info(f"Using dataset from {filename} (size: {len(dataset)})")
+        else:
+            raise Exception(f"Incorrect dataset size: {len(dataset)}")
+
+    except Exception as e:
+        logger.info(e)
+        logger.info(f'Generating fresh data...')
+        dataset = make_dataset(filename)
 
     # If no filename is passed in, the file does not exist, or the file's
     # contents do not represent a DataLoader as expected, then generate some
     # new data, and write it out to the given filename
-    logger.debug(f'Generating fresh data...')
-    dataloader = make_dataloader(filename)
+    dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
     return dataloader
 
 def pipeline(model, config):
-    logger.info(f'Training with config: {config}')
     start = time.time()
 
     # Consistent initialization
@@ -106,9 +104,13 @@ def pipeline(model, config):
     for r in range(config['RUNS']):
         run_start = time.time()
 
-        train_dataloader = get_dataloader(config, 'data/train_dataloader')
-        test_dataloader = get_dataloader(config, 'data/test_dataloader')
+        train_dataloader = get_dataloader(config, 'data/train_dataset',
+                                          require_match=True)
+        test_dataloader = get_dataloader(config, 'data/test_dataset',
+                                         require_match=True)
 
+        logger.info(f"Training with {HYPERPARAMETER} = "
+                    f"{config[HYPERPARAMETER]}...")
         for epoch in range(config['EPOCHS']):
             logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
             train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
