@@ -13,10 +13,11 @@ wheels/
 .DS_Store
 
 # vim
-.swp
+*.swp
 
-# models directory (too big to push)
+# models and data directory are too big to push
 models/
+data/
 
 # vscode workspace file
 ecs-170-project.code-workspace

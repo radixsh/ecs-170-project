@@ -1,16 +1,17 @@
 # ECS 170 AI Project: Deep Learning for Meta-Statistical Inference
-**Quickstart**: Run `generate_data.py` first to generate data and save it into the `data`
-subdirectory. Then run `train_multiple.py` to train multiple models on different
-values of the hyperparameter set in `env.py` and save their weights into the
-`models` subdirectory. Then run `regression_performance.py` to measure the
-performance for guessing mean and standard deviation; the scatter-plots will be
-saved into the `results` subdirectory.
+**Quickstart**:
+* Run `generate_data.py` first to generate data and save it into the `data`
+  subdirectory.
+* Then run `train_multiple.py` to train multiple models on different values of
+  the hyperparameter set in `env.py` and save their weights into the `models`
+  subdirectory.
+* Then run `regression_performance.py` to measure the performance for guessing
+  mean and standard deviation; the scatter-plots will be saved into the
+  `results` subdirectory.
 
-**Background**: These neural nets identify the distribution family, mean, and standard deviation
-from which data points are drawn. Trained with hyperparameters saved in
-`env.py`, each model's weights are uploaded here in `models/` subdirectory.
-
-The general architecture is as follows:
+**Background**: These neural nets identify the distribution family, mean, and
+standard deviation from which data points are drawn. The general architecture is
+as follows:
 * Input layer of `SAMPLE_SIZE` units
 * Hidden layer of `SAMPLE_SIZE` units
 * 3 hidden layers of 30 units each, using `ReLU` activation function
@@ -22,8 +23,8 @@ Next steps:
 - [x] Move on to more types of distributions
 - [x] Measure current performance (using some standardized method), generate
   some nice pretty graphs
-- [x] Hyperparameter tuning: Find best SAMPLE_SIZE (10)
 - [x] Hyperparameter tuning: Find best TRAINING_SIZE (100)
+- [ ] **Hyperparameter tuning: Find best SAMPLE_SIZE**
 - [ ] **Hyperparameter tuning: Find best BATCH_SIZE**
 - [ ] Hyperparameter tuning: Find best EPOCHS
 - [ ] Train the model separately on different runs, and save only the best one
@@ -43,7 +44,7 @@ Each model has hyperparameters set in `env.py`.
 Measures regression performance of each model in `models` directory wrt mean and
 stddev guesses (hence regression only, not classification). Performance is
 measured in terms of MAE, MAPE, and R^2. The performance is graphed as scatter
-plots in `results/` subdirectory.
+plots in `results` subdirectory.
 
 ## Documentation for supporting files
 ### `pipeline.py`

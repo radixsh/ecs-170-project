@@ -30,11 +30,11 @@ def train_model(dataloader, model, loss_function, optimizer, device):
         optimizer.step()
         optimizer.zero_grad()
 
-        if batch % 100 == 0:
-            loss_value = loss.item()
-            current = batch * dataloader.batch_size + len(X)#(batch + 1) * len(X)
-            logger.debug(f"Loss after batch {batch}:\t"
-                         f"{loss_value:>7f}  [{current:>5d}/{size:>5d}]")
+        # if batch % 100 == 0:
+        loss_value = loss.item()
+        current = batch * dataloader.batch_size + len(X)#(batch + 1) * len(X)
+        logger.debug(f"Loss after batch {batch}:\t"
+                     f"{loss_value:>7f}  [{current:>5d}/{size:>5d}]")
 
 def test_model(dataloader, model, loss_function, device):
     model.eval()
@@ -61,13 +61,24 @@ def test_model(dataloader, model, loss_function, device):
 def get_dataloader(config, filename=None, require_match=False):
     try:
         dataset = torch.load(filename)
-        is_acceptable_size = (len(dataset) == config['TRAINING_SIZE'] \
+
+        acceptable_count = (len(dataset) == config['TRAINING_SIZE'] \
                 or not require_match)
 
-        if isinstance(dataset, Dataset) and is_acceptable_size:
-            logger.info(f"Using dataset from {filename} (size: {len(dataset)})")
-        else:
+        dataset_sample_size = len(dataset.__getitem__(0)[0])
+        acceptable_sample_size = (config['SAMPLE_SIZE'] == dataset_sample_size)
+
+        if not isinstance(dataset, Dataset):
+            raise Exception(f'Could not read dataset from {filename}')
+        if not acceptable_count:
             raise Exception(f"Incorrect dataset size: {len(dataset)}")
+        if not acceptable_sample_size:
+            raise Exception(f"Incorrect sample size: model expects "
+                            f"{config['SAMPLE_SIZE']} points as input, "
+                            f"but this dataset gives {dataset_sample_size}")
+
+        # Otherwise, it's all good
+        logger.info(f"Using dataset from {filename} (size: {len(dataset)})")
 
     except Exception as e:
         logger.info(e)

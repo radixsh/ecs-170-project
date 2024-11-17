@@ -12,7 +12,7 @@ MEAN_SCALE = 10             # Data we generate will have means between -10 and 1
 NUM_DIMENSIONS = 1          # How many dimensions of data we're currently working with
 
 CONFIG = {
-        "TRAINING_SIZE": 100,    # How many (data points, labels) examples to train on
+        "TRAINING_SIZE": 10000,    # How many (data points, labels) examples to train on
         # "TEST_SIZE": 50,        # Equal to training size since we can generate arbitrary amounts of data
         "SAMPLE_SIZE": 10,      # Size of input layer
         "BATCH_SIZE": 32,       # How many examples to see before performing backpropagation
@@ -23,4 +23,4 @@ CONFIG = {
                                 # comes from classification task. Should be > 0.
         }
 
-HYPERPARAMETER = "TRAINING_SIZE"
+HYPERPARAMETER = "SAMPLE_SIZE"
