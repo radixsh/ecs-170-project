@@ -7,6 +7,7 @@ from env import NUM_DIMENSIONS, DEVICE, CONFIG, HYPERPARAMETER
 from build_model import build_model
 from pipeline import pipeline
 from distributions import DISTRIBUTION_FUNCTIONS
+from generate_data import MyDataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
