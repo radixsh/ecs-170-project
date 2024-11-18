@@ -1,6 +1,3 @@
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import numpy as np
 import logging
 import time
 import torch
@@ -20,8 +17,8 @@ logger.addHandler(console_handler)
 def main():
     start = time.time()
 
-    hyperparams = [1, 10, 50, 100, 200, 500]#1e1, 1e2, 1e3, 1e4]#, 1e5, 1e6]
-    # hyperparams = [int(i) for i in hyperparams]
+    hyperparams = [1e1, 1e2, 1e3, 1e4, 1e5]#, 1e6]
+    hyperparams = [int(i) for i in hyperparams]
 
     # Make sure the models directory exists
     models_directory = 'models'

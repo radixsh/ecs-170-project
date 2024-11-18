@@ -1,12 +1,10 @@
 import time
 import logging
-import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 from custom_functions import CustomLoss
 from generate_data import make_dataset
 from env import DEVICE, HYPERPARAMETER
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -36,34 +34,14 @@ def train_model(dataloader, model, loss_function, optimizer, device):
         logger.debug(f"Loss after batch {batch}:\t"
                      f"{loss_value:>7f}  [{current:>5d}/{size:>5d}]")
 
-def test_model(dataloader, model, loss_function, device):
-    model.eval()
-
-    test_loss = 0
-    guesses = []
-    actuals = []
-    with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device).float(), y.to(device).float()
-
-            pred = model(X)
-            # logger.debug(f"pred: \t{pred}")
-            # logger.debug(f"y: \t\t{y}")
-
-            # TODO: Implement metrics with guesses and actuals?
-
-            test_loss += loss_function(pred, y).item()
-            # logger.debug(f"loss: \t{loss_function(pred,y)}")
-
-    test_loss /= len(dataloader)
-    return test_loss
-
-def get_dataloader(config, filename=None, require_match=False):
+def get_dataloader(config, filename=None, required_size=-1):
     try:
         dataset = torch.load(filename)
 
-        acceptable_count = (len(dataset) == config['TRAINING_SIZE'] \
-                or not require_match)
+        # If required_size is passed in, then adhere to it. Otherwise,
+        # required_size is default value, indicating dataset can have any size
+        acceptable_count = (len(dataset) == required_size \
+                            or required_size == -1)
 
         dataset_sample_size = len(dataset.__getitem__(0)[0])
         acceptable_sample_size = (config['SAMPLE_SIZE'] == dataset_sample_size)
@@ -74,10 +52,9 @@ def get_dataloader(config, filename=None, require_match=False):
             raise Exception(f"Incorrect dataset size: {len(dataset)}")
         if not acceptable_sample_size:
             raise Exception(f"Incorrect sample size: model expects "
-                            f"{config['SAMPLE_SIZE']} points as input, "
-                            f"but this dataset gives {dataset_sample_size}")
+                            f"{config['SAMPLE_SIZE']} points as input, but "
+                            f"this dataset would give {dataset_sample_size}")
 
-        # Otherwise, it's all good
         logger.info(f"Using dataset from {filename} (size: {len(dataset)})")
 
     except Exception as e:
@@ -94,9 +71,7 @@ def get_dataloader(config, filename=None, require_match=False):
 def pipeline(model, config):
     start = time.time()
 
-    # Consistent initialization
     torch.manual_seed(42)
-    np.random.seed(42)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
 
@@ -111,57 +86,17 @@ def pipeline(model, config):
     # depends on config dict to build the loss function
     loss_function = CustomLoss()
 
-    for r in range(config['RUNS']):
-        run_start = time.time()
+    train_dataloader = get_dataloader(config, 'data/train_dataset',
+                                      required_size=config['TRAINING_SIZE'])
 
-        train_dataloader = get_dataloader(config, 'data/train_dataset',
-                                          require_match=True)
-        test_dataloader = get_dataloader(config, 'data/test_dataset',
-                                         require_match=True)
+    logger.info(f"Training with {HYPERPARAMETER} = "
+                f"{config[HYPERPARAMETER]}...")
 
-        logger.info(f"Training with {HYPERPARAMETER} = "
-                    f"{config[HYPERPARAMETER]}...")
-        for epoch in range(config['EPOCHS']):
-            logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
-            train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
-            test_model(test_dataloader, model, loss_function, DEVICE)
-
-        run_end = time.time()
-        logger.debug(f"Finished run {r + 1} of {config['RUNS']} in " +
-                     f"{run_end - run_start:.2f} seconds")
+    for epoch in range(config['EPOCHS']):
+        logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
+        train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
 
     end = time.time()
-    logger.info(f"Finished training pipeline in {end - start:.2f} seconds")
+    logger.info(f"Finished training in {end - start:.2f} seconds")
 
     return model.state_dict()
-
-    '''
-        # Test the model on the test data
-        raw_test_data = generate_data(count=TEST_SIZE)
-        test_samples = np.array([elem[0] for elem in raw_test_data])
-        test_labels = np.array([elem[1] for elem in raw_test_data])
-        test_dataset = MyDataset(test_samples, test_labels)
-        test_dataloader = DataLoader(test_dataset)
-        loss = test_model(test_dataloader, model, loss_function, DEVICE)
-        logger.info(f"Avg loss (testing): {loss}")
-
-        run_end = time.time()
-        logger.info(f"Finished run {run + 1} of {RUNS} in " +
-                     f"{run_end - run_start:.2f} seconds")
-
-    end = time.time()
-    logger.info(f"Finished {RUNS} runs in {end - start:.2f} seconds")
-
-    torch.save(model.state_dict(), 'model_weights.pth')
-
-    # Performance metrics: accuracy, precision, recall, and F1 score
-    accuracy = accuracy_score(test_labels, test_samples)
-    precision = precision_score(test_labels, test_samples)
-    recall = recall_score(test_labels, test_samples)
-    f1 = f1_score(test_labels, test_samples)
-
-    print("Accuracy:", accuracy)
-    print("Precision:", precision)
-    print("Recall:", recall)
-    print("F1-Score:", f1)
-    '''

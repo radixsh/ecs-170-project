@@ -30,7 +30,7 @@ def get_mae_mape_r2(model, desired):
         return
 
     test_dataloader = get_dataloader(CONFIG, 'data/test_dataset',
-                                     require_match=False)
+                                     required_size=CONFIG['TEST_SIZE'])
     model.eval()
     actuals = []
     guesses = []
