@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from env import NUM_DIMENSIONS, DEVICE, CONFIG, HYPERPARAMETER, VALUES
 from build_model import build_model
 from custom_functions import CustomLoss
-from generate_data import make_dataset, get_dataloader, DISTRIBUTION_FUNCTIONS
+from generate_data import make_dataset, get_dataloader, MyDataset, DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
