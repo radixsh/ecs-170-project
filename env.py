@@ -22,5 +22,4 @@ DEVICE = (
         "cpu"           # Fastest for small networks because moving stuff to GPU is slow
         )
 
-MEAN_SCALE = 10             # Data we generate will have means between -10 and 10
 NUM_DIMENSIONS = 1          # How many dimensions of data we're currently working with

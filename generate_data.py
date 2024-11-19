@@ -7,7 +7,7 @@ import time
 import math
 import mpmath
 
-from env import CONFIG, MEAN_SCALE
+from env import CONFIG
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -20,14 +20,15 @@ rng = np.random.default_rng()
 ### HELPERS
 # Returns a uniformly random value in (-1, 1)
 def generate_mean():
-    sign = rng.choice([-1, 1])
-    return rng.uniform() * sign * MEAN_SCALE
-# Returns a random positive value according to the function x*exp(-x) (mean=1)
+    return rng.normal(0, 1)
+
+# Generates a standard deviation according lognormal with mean and stddev 1
 def generate_stddev():
-    return rng.gamma(2, scale=1)
-# Returns a uniformly random value in (0, 1]
+    return rng.lognormal(mean= -math.log(2) / math.sqrt(2), sigma=math.sqrt(math.log(2)))
+
+# Generates a standard deviation according lognormal with mean and stddev 1
 def generate_pos_mean():
-    return (1 - rng.uniform()) * MEAN_SCALE
+    return rng.lognormal(mean= -math.log(2) / math.sqrt(2), sigma=math.sqrt(math.log(2)))
 
 ## SUPPORT = R
 
@@ -35,6 +36,7 @@ def normal(sample_size):
     mean = generate_mean()
     stddev = generate_stddev()
     labels = [0,0,0,0,0,0,1,0,0,mean,stddev]
+
     sample_data = rng.normal(mean, stddev, sample_size)
     return (sample_data, labels)
 
@@ -87,22 +89,20 @@ def lognormal(sample_size):
 
     # mean = exp(mu + sigma^2/2)
     # stddev^2 = (exp(sigma^2) - 1) exp(2 mu - sigma^2)
-    # sigma = sqrt(ln(1 + (mean/stddev)^2))
-    # mu = ln(mean / sqrt(1 + (mean/stddev)^2))
-    sigma = math.sqrt(math.log(1 + (mean / stddev) ** 2))
-    mu = math.log(mean / math.sqrt(1 + (mean / stddev) ** 2))
+    sigma = math.sqrt(math.log(1 + ((stddev / mean) ** 2)))
+    mu = math.log((mean ** 2) / math.sqrt((mean ** 2) + (stddev ** 2)))
     sample_data = rng.lognormal(mu, sigma, sample_size)
     return (sample_data, labels)
 
 def rayleigh(sample_size):
     mean = generate_pos_mean()
-    stddev = generate_stddev()
-    labels = [0,0,0,0,0,0,0,1,0,mean,stddev]
-
     # mean = sigma sqrt(pi/2)
     # sigma = mean * sqrt(2/pi)
-    # One parameter, which must be positive
     sigma = mean * math.sqrt(2 / math.pi)
+    stddev = mean * math.sqrt((4 / math.pi)  - 1)
+    labels = [0,0,0,0,0,0,0,1,0,mean,stddev]
+
+    # One parameter, which must be positive
     sample_data = rng.rayleigh(sigma, sample_size)
     return (sample_data, labels)
 
@@ -110,13 +110,17 @@ def rayleigh(sample_size):
 # Non-positive mean is illegal for these distributions
 
 def beta(sample_size):
-    # Need a mean in (0, 1) and a stddev in (0, mean - mean^2)
-    # Possibly write this differently
-    mean = (generate_mean() / MEAN_SCALE + 1) / 2
-    stddev = ((generate_mean() / MEAN_SCALE + 1) / 2) * (mean - mean ** 2)
+    # Need a mean in (0, 1) 
+    sign1 = rng.choice([-1, 1])
+    mean1 = rng.uniform() * sign1
+    mean = (mean1 + 1) / 2
+    # Need a stddev in (0, mean - mean^2)
+    sign2 = rng.choice([-1, 1])
+    mean2 = rng.uniform() * sign2
+    stddev = ((mean2 + 1) / 2) * (mean - (mean ** 2))
     labels = [1,0,0,0,0,0,0,0,0,mean,stddev]
 
-    a = math.sqrt((mean ** 2 - mean ** 3) / stddev - mean)
+    a = math.sqrt((((mean ** 2) - (mean ** 3)) / stddev) - mean)
     b = (a / mean) - a
     sample_data = rng.beta(a, b, sample_size)
     return (sample_data, labels)
