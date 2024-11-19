@@ -20,6 +20,10 @@ def main():
     hyperparams = [1e1, 1e2, 1e3, 1e4, 1e5]#, 1e6]
     hyperparams = [int(i) for i in hyperparams]
 
+    # Make sure the 'data' directory exists
+    data_directory = 'data'
+    os.makedirs(data_directory, exist_ok=True)
+
     # Make sure the models directory exists
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)

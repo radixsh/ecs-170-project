@@ -34,14 +34,14 @@ def train_model(dataloader, model, loss_function, optimizer, device):
         logger.debug(f"Loss after batch {batch}:\t"
                      f"{loss_value:>7f}  [{current:>5d}/{size:>5d}]")
 
-def get_dataloader(config, filename=None, required_size=-1):
+def get_dataloader(config, filename=None, examples_count=-1):
     try:
         dataset = torch.load(filename)
 
-        # If required_size is passed in, then adhere to it. Otherwise,
-        # required_size is default value, indicating dataset can have any size
-        acceptable_count = (len(dataset) == required_size \
-                            or required_size == -1)
+        # If examples_count is passed in, then adhere to it. Otherwise,
+        # examples_count is default value, indicating dataset can have any size
+        acceptable_count = (len(dataset) == examples_count \
+                            or examples_count == -1)
 
         dataset_sample_size = len(dataset.__getitem__(0)[0])
         acceptable_sample_size = (config['SAMPLE_SIZE'] == dataset_sample_size)
@@ -60,7 +60,7 @@ def get_dataloader(config, filename=None, required_size=-1):
     except Exception as e:
         logger.info(e)
         logger.info(f'Generating fresh data...')
-        dataset = make_dataset(filename)
+        dataset = make_dataset(filename, examples_count)
 
     # If no filename is passed in, the file does not exist, or the file's
     # contents do not represent a DataLoader as expected, then generate some
@@ -87,7 +87,7 @@ def pipeline(model, config):
     loss_function = CustomLoss()
 
     train_dataloader = get_dataloader(config, 'data/train_dataset',
-                                      required_size=config['TRAINING_SIZE'])
+                                      examples_count=config['TRAINING_SIZE'])
 
     logger.info(f"Training with {HYPERPARAMETER} = "
                 f"{config[HYPERPARAMETER]}...")
