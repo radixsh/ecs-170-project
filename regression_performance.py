@@ -11,8 +11,8 @@ from torch.utils.data import DataLoader
 
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE
 from build_model import build_model
-from pipeline import get_dataloader
-from distributions import DISTRIBUTION_FUNCTIONS
+from train_multiple import get_dataloader
+from generate_data import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -91,7 +91,6 @@ def create_png(name, x_values, means, stddevs):
 # Goal: Graph how loss, R^2, and MAE varies with different sample sizes,
 # training sizes, epoch counts, and/or learning rate
 def main():
-    logger.info("Measuring MAE, MAPE, and R^2 for means and stddevs")
     start = time.time()
 
     # Make sure the 'results' directory exists (for png graphs of results)

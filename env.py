@@ -1,5 +1,5 @@
 CONFIG = {
-        "TRAINING_SIZE": 100000,  # How many (data points, labels) examples to train on
+        "TRAINING_SIZE": 1000,  # How many (data points, labels) examples to train on
         "TEST_SIZE": 100,       # To speed up regression_performance.py
         "SAMPLE_SIZE": 10,      # Size of input layer
         "BATCH_SIZE": 32,       # How many examples to see before performing backpropagation
@@ -10,6 +10,8 @@ CONFIG = {
         }
 
 HYPERPARAMETER = "TRAINING_SIZE"
+VALUES = [1e1, 1e2, 1e3, 1e4, 1e5]
+VALUES = [int(i) for i in VALUES]
 
 DEVICE = (
         # "cuda"        # Use with large networks and good GPU; requires special torch install

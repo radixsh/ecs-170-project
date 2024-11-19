@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from env import NUM_DIMENSIONS, CONFIG
-from distributions import DISTRIBUTION_FUNCTIONS
+from generate_data import DISTRIBUTION_FUNCTIONS
 
 # Gets the indices specified of the input... goofy, but convenient
 def get_indices(dists=False,mean=False,stddev=False, dims=[1]):
