@@ -21,3 +21,6 @@ data/
 
 # vscode workspace file
 ecs-170-project.code-workspace
+
+# merge conflicts with image generations
+results/
