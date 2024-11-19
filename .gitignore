@@ -8,6 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+.python-version
 
 # MacOS
 .DS_Store
@@ -21,3 +22,6 @@ data/
 
 # vscode workspace file
 ecs-170-project.code-workspace
+
+# merge conflicts with image generations
+results/

@@ -1,12 +1,12 @@
 # ECS 170 AI Project: Deep Learning for Meta-Statistical Inference
 **Quickstart**:
-* Run `generate_data.py` first to generate data and save it into the `data`
-  subdirectory.
-* Then run `train_multiple.py` to train multiple models on different values of
-  the hyperparameter set in `env.py` and save their weights into the `models`
-  subdirectory.
+* In `env.py`, set HYPERPARAMETER to whatever hyperparameter you want to change,
+  and populate VALUES with the values you want HYPERPARAMETER to take on.
+* Run `train_multiple.py` to train multiple models on the different
+  HYPERPARAMETER values you set. The model weights will be saved into a new
+  `models` subdirectory.
 * Then run `regression_performance.py` to measure the performance for guessing
-  mean and standard deviation; the scatter-plots will be saved into the
+  mean and standard deviation; the scatter-plots will be saved as pngs into the
   `results` subdirectory.
 
 **Background**: These neural nets identify the distribution family, mean, and
@@ -25,7 +25,8 @@ Next steps:
   some nice pretty graphs
 - [x] Hyperparameter tuning: Find best TRAINING_SIZE (100)
 - [ ] **Hyperparameter tuning: Find best SAMPLE_SIZE**
-- [ ] **Hyperparameter tuning: Find best BATCH_SIZE**
+- [ ] **Hyperparameter tuning: Find best BATCH_SIZE** (need bug fix first; see
+  below)
 - [ ] Hyperparameter tuning: Find best EPOCHS
 - [ ] Train the model separately on different runs, and save only the best one
   to `model_weights.pth` (currently, it's saving the last run's weights, not the
@@ -35,28 +36,38 @@ Next steps:
   the true distribution family, mean, and standard deviation
 - [ ] Move on to multi-dimensional data
 
+Bug list:
+- [ ] When attempting to tune hyperparameter BATCH_SIZE,
+  regression_performance.py does not properly generate big test datasets to
+  match up with the large BATCH_SIZE. This results in inaccurate regression
+  metrics, as each model is tested on a test dataset that is much smaller than
+  the batch size and therefore only gives one uninformed loss value per (or MAE,
+  etc.)
+
 ## Main useful files
 ### `train_multiple.py`
-Trains multiple models and saves each one's weights into `models` subdirectory.
-Each model has hyperparameters set in `env.py`.
+Trains multiple models, and saves each one's weights into a new `models`
+subdirectory. Each model has hyperparameters set in `env.py`.
+
+Models are trained on data from the `data` directory. This script generates new
+data if needed: if `data/train_dataset` is 100 entries long, but `env.py`
+currently calls for `TRAINING_SIZE=300`, then `train_multiple.py` will
+regenerate a 300-entry training dataset and overwrite `data/train_dataset` with
+it.
 
 ### `regression_performance.py`
-Measures regression performance of each model in `models` directory wrt mean and
-stddev guesses (hence regression only, not classification). Performance is
-measured in terms of MAE, MAPE, and R^2. The performance is graphed as scatter
-plots in `results` subdirectory.
+Creates scatter plots of regression performance of each model in the `models`
+directory wrt mean and stddev guesses (hence "regression" performance only, no
+classification yet). Performance is measured in terms of mean average error,
+mean average percentage error, and R^2 correlation coefficient. The images are
+saved in the `results` subdirectory.
 
 ## Documentation for supporting files
-### `pipeline.py`
-Trains a new model using hyperparameters passed in via the `config` parameter.
-The model is trained on either data from the `data` directory or on newly
-generated data (which it then saves out to the `data` directory to save time
-later). The finished model's connection weights are returned, and then
-`train_multiple.py` is able to catch this and save it to the `models` directory.
-
-### `custom_loss_fn.py`
+### `custom_functions.py`
 Provides a custom loss function that appropriately deals with both categorical
 data (distribution family) and numerical data (mean and standard deviation).
+Also provides a custom multitask layer for our neural net ("multitask" because
+it performs both classification and regression tasks).
 
 In the loss function, we call `softmax()` on each one-hot guess individually to
 convert it into what looks like a probability measure. This gets the loss
@@ -70,6 +81,10 @@ function `backward()` (which is the partial derivative wrt output), is usually
 calculated automatically.) We may try to put this `softmax()` thing at the end
 of the model itself, perhaps as some sort of pseudo–activation function
 processing the model's output layer.
+
+### `build_model.py`
+Defines neural network architecture. Uses custom multitask layer defined in
+`custom_functions.py`.
 
 ### `generate_data.py`
 `generate_data.py` provides a wrapper around functions from `distributions.py`

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from env import NUM_DIMENSIONS, CONFIG
-from distributions import DISTRIBUTION_FUNCTIONS
+from generate_data import DISTRIBUTION_FUNCTIONS
 
 # Gets the indices specified of the input... goofy, but convenient
 def get_indices(dists=False,mean=False,stddev=False, dims=[1]):
@@ -35,12 +35,15 @@ class Multitask(nn.Module):
         return out
 
 class CustomLoss(nn.Module):
-    def __init__(self, use_mean=True,use_stddev=True,use_dists=True):
+    def __init__(self, use_mean=True, use_stddev=True, use_dists=True, alpha = 1):
         super(CustomLoss, self).__init__()
         
         self.use_mean = use_mean
         self.use_stddev = use_stddev
         self.use_dists = use_dists
+        # Alpha controls how much the network gets punished
+        # on the classification task relative to the regression task
+        self.alpha = alpha
 
         # Manually calculated: (total variation distance) / sqrt(2) to normalize between 0 and 1
         # See: https://www.desmos.com/calculator/8h3zthas2q
@@ -110,4 +113,4 @@ class CustomLoss(nn.Module):
 
         # classification loss of 0 means loss = regression loss
         # classification loss of 1 means loss -> infinity
-        return (regression_loss + CONFIG['ALPHA'] * classification_loss) / (1 - classification_loss)
+        return (regression_loss + self.alpha * classification_loss) / (1 - classification_loss)
