@@ -38,10 +38,9 @@ def generate_data(count, sample_size):
         data.append((points, labels))
     return data
 
-def make_dataset(filename):
+def make_dataset(filename, examples_count):
     start = time.time()
-
-    raw_data = generate_data(count=CONFIG['TRAINING_SIZE'],
+    raw_data = generate_data(count=examples_count,
                              sample_size=CONFIG['SAMPLE_SIZE'])
     samples = np.array([elem[0] for elem in raw_data])
     labels = np.array([elem[1] for elem in raw_data])
@@ -49,7 +48,7 @@ def make_dataset(filename):
     torch.save(dataset, filename)
 
     end = time.time()
-    logger.info(f"Generated and saved {CONFIG['TRAINING_SIZE']} examples out "
+    logger.info(f"Generated and saved {examples_count} examples out "
                 f"to {filename} in {end - start:.2f} seconds "
                 f"(BATCH_SIZE={CONFIG['BATCH_SIZE']})")
 
@@ -61,5 +60,5 @@ if __name__ == "__main__":
     data_directory = 'data'
     os.makedirs(data_directory, exist_ok=True)
 
-    make_dataset('data/train_dataset')
-    make_dataset('data/test_dataset')
+    make_dataset('data/train_dataset', examples_count=CONFIG['TRAINING_SIZE'])
+    make_dataset('data/test_dataset', examples_count=CONFIG['TEST_SIZE'])

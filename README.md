@@ -35,6 +35,14 @@ Next steps:
   the true distribution family, mean, and standard deviation
 - [ ] Move on to multi-dimensional data
 
+Bug list:
+- [ ] When attempting to tune hyperparameter BATCH_SIZE,
+  regression_performance.py does not properly generate big test datasets to
+  match up with the large BATCH_SIZE. This results in inaccurate regression
+  metrics, as each model is tested on a test dataset that is much smaller than
+  the batch size and therefore only gives one uninformed loss value per (or MAE,
+  etc.)
+
 ## Main useful files
 ### `train_multiple.py`
 Trains multiple models and saves each one's weights into `models` subdirectory.
