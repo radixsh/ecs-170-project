@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from env import NUM_DIMENSIONS, DEVICE, CONFIG, HYPERPARAMETER, VALUES
 from build_model import build_model
 from custom_functions import CustomLoss
-from generate_data import make_dataset, get_dataloader, MyDataset, DISTRIBUTION_FUNCTIONS
+from generate_data import make_dataset, get_dataloader, MyDataset, DISTRIBUTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -95,7 +95,7 @@ def main():
 
         # Initialize a new neural net
         input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
-        output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
+        output_size = (len(DISTRIBUTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
 
         # Train the model anew, and save the resulting model's weights out

@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 import time
 import math
 import mpmath
+import scipy.stats as sps
 
 from env import CONFIG, NUM_DIMENSIONS
 
@@ -17,146 +18,211 @@ logger.addHandler(console_handler)
 ### SEED THE RNG
 rng = np.random.default_rng()
 
-### HELPERS
-# Returns a uniformly random value in (-1, 1)
-def generate_mean():
-    return rng.normal(0, 1)
+### DISTRIBUTION CLASSES
 
-# Generates a standard deviation according lognormal with mean and stddev 1
-def generate_stddev():
-    return rng.lognormal(mean= -math.log(2) / math.sqrt(2), sigma=math.sqrt(math.log(2)))
+## CLASS HEADERS
+# # Parent Class
+# class Distribution(): pass
+#
+# # Child Classes
+# class Beta(Distribution): pass
+# class Gamma(Distribution): pass
+# class Gumbel(Distribution): pass
+# class Laplace(Distribution): pass
+# class Logistic(Distribution): pass
+# class Lognormal(Distribution): pass
+# class Normal(Distribution): pass
+# class Rayleigh(Distribution): pass
+# class Wald(Distribution): pass
 
-# Generates a standard deviation according lognormal with mean and stddev 1
-def generate_pos_mean():
-    return rng.lognormal(mean= -math.log(2) / math.sqrt(2), sigma=math.sqrt(math.log(2)))
+## CLASS DEFINITIONS
 
-## SUPPORT = R
+# Parent class
+class Distribution:
+    def __init__(self,mean,stddev,support,name):
+        self.name = name
+        self.support = support
+        self.mean = mean if isinstance(mean, float) else self.generate_mean()
+        self.stddev = stddev if isinstance(stddev, float) else self.generate_stddev()
+        self.onehot = [0,0,0,0,0,0,0,0,0]
 
-def normal(sample_size):
-    mean = generate_mean()
-    stddev = generate_stddev()
-    labels = [0,0,0,0,0,0,1,0,0,mean,stddev]
+    def __str__(self):
+        string = f"self.name: {self.name}, "
+        string += f"self.support: {self.support}, "
+        string += f"self.function: {self.onehot}, "
+        string += f"self.mean: {self.mean}, "
+        string += f"self.stddev: {self.stddev}"
+        return string
 
-    sample_data = rng.normal(mean, stddev, sample_size)
-    return (sample_data, labels)
+    def get_label(self):
+        label = self.onehot + [self.mean, self.stddev]
+        return label
 
-def gumbel(sample_size):
-    mean = generate_mean()
-    stddev = generate_stddev()
-    labels = [0,0,1,0,0,0,0,0,0,mean,stddev]
+    # Returns a random positive real according to the lognormal distribution
+    # with mean and stddev 1. Useful for generating stddevs and positive means.
+    def random_pos(self):
+        return rng.lognormal(mean = -math.log(2) / math.sqrt(2), sigma=math.sqrt(math.log(2)))
 
-    # stddev^2 = (pi^2 beta^2) / 6
-    # beta = stddev * sqrt(6) / pi
-    beta = stddev * math.sqrt(6) / math.pi
+    def generate_mean(self):
+        # Support is all of R
+        if self.support == 'R':
+            return rng.normal(0, 1)
+        # Support is positive
+        elif self.support == 'R+':
+            return self.random_pos()
+        # Otherwise, it's the beta distribution
+        # random val in (0,1)
+        elif self.support == 'I':
+            sign = rng.choice([-1, 1])
+            open_interval = rng.uniform() * sign
+            return (open_interval + 1) / 2
 
-    # euler is the Euler-Mascheroni constant
-    # mean = mu + beta * euler
-    # mu = mean - beta * euler
-    mu = mean - beta * float(mpmath.euler)
+    def generate_stddev(self):
+        # Special behavior for some dists
+        # Default case
+        if self.name not in ['Beta','Rayleigh']:
+            return self.random_pos()
+        # Beta's "mean" function is strange.
+        elif self.name == 'Beta':
+            open_interval = self.generate_mean()
+            upper_bound = (self.mean - (self.mean ** 2))
+            return open_interval * upper_bound
+        # Rayleigh
+        else:
+            weird_constant = math.sqrt((4 / math.pi)  - 1)
+            return self.mean * weird_constant
 
-    sample_data = rng.gumbel(mu, beta, sample_size)
-    return (sample_data, labels)
+# Child classes
+class Beta(Distribution):
+    def __init__(self,mean="not set",stddev="not set"):
+        super().__init__(mean, stddev, support='I',name='Beta')
+        self.onehot = [1,0,0,0,0,0,0,0,0]
+        self.alpha = math.sqrt((((self.mean ** 2) - (self.mean ** 3)) / self.stddev) - self.mean)
+        self.beta = (self.alpha / self.mean) - self.alpha
 
-def laplace(sample_size):
-    mean = generate_mean()
-    stddev = generate_stddev()
-    labels = [0,0,0,1,0,0,0,0,0,mean,stddev]
+    def rng(self,sample_size):
+        return rng.beta(self.alpha,self.beta,sample_size)
 
-    # stddev^2 = 2b^2
-    # b = sqrt(2)*stddev
-    b = stddev * math.sqrt(2)
-    sample_data = rng.laplace(mean, b, sample_size)
-    return (sample_data, labels)
+    def pdf(self,x):
+        return sps.beta(x,self.alpha,self.beta)
 
-def logistic(sample_size):
-    mean = generate_mean()
-    stddev = generate_stddev()
-    labels = [0,0,0,0,1,0,0,0,0,mean,stddev]
+class Gamma(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R+',name='Gamma')
+        self.onehot = [0,1,0,0,0,0,0,0,0]
+        self.shape = (self.mean / self.stddev) ** 2
+        self.scale = (self.stddev ** 2) / self.mean
 
-    # stddev^2 = pi^2 s^2 * 1/3
-    # s = sqrt(3)/pi * stddev
-    s = stddev * math.sqrt(3) / math.pi
-    sample_data = rng.logistic(mean, s, sample_size)
-    return (sample_data, labels)
+    def rng(self,sample_size):
+        return rng.gamma(self.shape,self.scale,sample_size)
 
+    def pdf(self,x):
+        return sps.gamma(x,self.shape,scale=self.scale)
 
-## SUPPORT >= 0
+class Gumbel(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R',name='Gumbel')
+        self.onehot = [0,0,1,0,0,0,0,0,0]
+        self.scale = self.stddev * math.sqrt(6) / math.pi
+        self.loc = self.mean - self.scale * float(mpmath.euler)
 
-def lognormal(sample_size):
-    mean = generate_pos_mean()
-    stddev = generate_stddev()
-    labels = [0,0,0,0,0,1,0,0,0,mean,stddev]
+    def rng(self,sample_size):
+        return rng.gumbel(self.loc,self.scale,sample_size)
 
-    # mean = exp(mu + sigma^2/2)
-    # stddev^2 = (exp(sigma^2) - 1) exp(2 mu - sigma^2)
-    sigma = math.sqrt(math.log(1 + ((stddev / mean) ** 2)))
-    mu = math.log((mean ** 2) / math.sqrt((mean ** 2) + (stddev ** 2)))
-    sample_data = rng.lognormal(mu, sigma, sample_size)
-    return (sample_data, labels)
+    def pdf(self,x):
+        return sps.gumbel_r(x,loc=self.loc,scale=self.scale)
 
-def rayleigh(sample_size):
-    mean = generate_pos_mean()
-    # mean = sigma sqrt(pi/2)
-    # sigma = mean * sqrt(2/pi)
-    sigma = mean * math.sqrt(2 / math.pi)
-    stddev = mean * math.sqrt((4 / math.pi)  - 1)
-    labels = [0,0,0,0,0,0,0,1,0,mean,stddev]
+class Laplace(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R',name='Laplace')
+        self.onehot = [0,0,0,1,0,0,0,0,0]
+        self.scale = self.stddev * math.sqrt(2)
 
-    # One parameter, which must be positive
-    sample_data = rng.rayleigh(sigma, sample_size)
-    return (sample_data, labels)
+    def rng(self,sample_size):
+        return rng.laplace(self.mean,self.scale,sample_size)
 
-## SUPPORT > 0
-# Non-positive mean is illegal for these distributions
+    def pdf(self,x):
+        return sps.laplace(x,loc=self.mean,scale=self.scale)
 
-def beta(sample_size):
-    # Need a mean in (0, 1)
-    sign1 = rng.choice([-1, 1])
-    mean1 = rng.uniform() * sign1
-    mean = (mean1 + 1) / 2
-    # Need a stddev in (0, mean - mean^2)
-    sign2 = rng.choice([-1, 1])
-    mean2 = rng.uniform() * sign2
-    stddev = ((mean2 + 1) / 2) * (mean - (mean ** 2))
-    labels = [1,0,0,0,0,0,0,0,0,mean,stddev]
+class Logistic(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R',name='Logistic')
+        self.onehot = [0,0,0,0,1,0,0,0,0]
+        self.scale = self.stddev * math.sqrt(3) / math.pi
 
-    a = math.sqrt((((mean ** 2) - (mean ** 3)) / stddev) - mean)
-    b = (a / mean) - a
-    sample_data = rng.beta(a, b, sample_size)
-    return (sample_data, labels)
+    def rng(self,sample_size):
+        return rng.logistic(self.mean,self.scale,sample_size)
 
-def gamma(sample_size):
-    mean = generate_pos_mean()
-    stddev = generate_stddev()
-    labels = [0,1,0,0,0,0,0,0,0,mean,stddev]
+    def pdf(self,x):
+        return sps.logistic(x,loc=self.mean,scale=self.scale)
 
-    k = (mean / stddev) ** 2
-    theta = (stddev ** 2) / mean
-    sample_data = rng.gamma(k, theta, sample_size)
-    return (sample_data, labels)
+class Lognormal(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R+',name='Lognormal')
+        self.onehot = [0,0,0,0,0,1,0,0,0]
+        # TODO: CHECK THIS MATH
+        self.shape = math.sqrt(math.log(1 + (self.stddev / self.mean) ** 2))
+        self.loc = math.log((self.mean ** 2) / math.sqrt((self.mean ** 2) + (self.stddev ** 2)))
 
-def wald(sample_size):
-    mean = generate_pos_mean()
-    stddev = generate_stddev()
-    labels = [0,0,0,0,0,0,0,0,1,mean,stddev]
+    def rng(self,sample_size):
+        return rng.lognormal(self.loc,self.shape,sample_size)
 
-    # stddev^2 = mean^3 / lam
-    # lam = mean^3 / stddev^2
-    lam = (mean ** 3) / (stddev ** 2)
-    sample_data = rng.wald(mean, lam, sample_size)
-    return (sample_data, labels)
+    def pdf(self,x):
+        return sps.lognorm(x,self.shape, loc=self.loc)
 
-DISTRIBUTION_FUNCTIONS = {
-    "beta": beta,
-    "gamma": gamma,
-    "gumbel": gumbel,
-    "laplace": laplace,
-    "logistic": logistic,
-    "lognormal": lognormal,
-    "normal": normal,
-    "rayleigh": rayleigh,
-    "wald": wald,
+class Normal(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R',name='Normal')
+        self.onehot = [0,0,0,0,0,0,1,0,0]
+
+    def rng(self,sample_size):
+        return rng.normal(self.mean,self.stddev,sample_size)
+
+    def pdf(self,x):
+        return sps.norm(x,loc=self.mean,scale=self.stddev)
+
+class Rayleigh(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R+',name='Rayleigh')
+        self.onehot = [0,0,0,0,0,0,0,1,0]
+        self.scale = self.mean * math.sqrt(2 / math.pi)
+        self.stddev = self.mean * math.sqrt((4 / math.pi)  - 1)
+
+    def rng(self,sample_size):
+        # TODO: fix
+        # return rng.rayleigh(self.mean,self.scale,sample_size)
+        return rng.rayleigh(self.mean,sample_size)
+
+    def pdf(self,x):
+        return sps.rayleigh(x,loc=self.mean,scale=self.scale)
+
+class Wald(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R+',name='Wald')
+        self.onehot = [0,0,0,0,0,0,0,0,1]
+        self.lam = (self.mean ** 3) / (self.stddev ** 2)
+        self.mu = self.mean / self.lam
+
+    def rng(self,sample_size):
+        return rng.wald(self.mean,self.lam,sample_size)
+
+    def pdf(self,x):
+        return sps.invgauss(x,self.mu, scale = self.lam)
+
+# Prob move inside of class
+DISTRIBUTIONS = {
+    "beta": Beta,
+    "gamma": Gamma,
+    "gumbel": Gumbel,
+    "laplace": Laplace,
+    "logistic": Logistic,
+    "lognormal": Lognormal,
+    "normal": Normal,
+    "rayleigh": Rayleigh,
+    "wald": Wald,
 }
+
+### Other stuff
 
 class MyDataset(Dataset):
     def __init__(self, data, labels):
@@ -173,46 +239,64 @@ class MyDataset(Dataset):
 
 def generate_data(count, sample_size):
     data = []
-
     # Generate 'count' examples uniformly at random (before, it was 9 * 'count')
     for _ in range(count):
-        items = list(DISTRIBUTION_FUNCTIONS.items())
-        choice = np.random.choice(len(items))
-        _, dist_func = items[choice]
-        points, labels = dist_func(sample_size)
-        data.append((points, labels))
-    # print(data)
+        dist_class = np.random.choice(DISTRIBUTIONS.items())
+        dist_object = dist_class()
+        points = dist_object.rng(sample_size)
+        label = dist_object.get_label()
+        data.append((points, label))
+        # items = list(DISTRIBUTIONS.items())
+        # choice = np.random.choice(len(items))
+        # _, dist_func = items[choice]
+        # points, labels = dist_func(sample_size)
+        # data.append((points, labels))
     return data
 
+'''
 # TODO: multidimensional generation
-# it should randomly generate N distribution types, where N is NUM_DIMENSIONS
-# the function should call the randomly chosen distribution functions from distributions.py, and make an array of N-tuples out of the result
-# it should also make an array of labels, which is the concatenation of the 1hot, mean and stddev of each distribution
-# return a pair of those arrays
-#
-# e.g., if NUM_DIMENSIONS is 2 and SAMPLE_SIZE is 3, we randomly choose 3 dimensions (say normal and gamma)
-# the function should return something that looks like:
-# [
-#    [n1, n2, n3, g1, g2, g3],
-#    [0,0,0,0,0,0,1,0,0,normal_mean,normal_stddev,0,1,0,0,0,0,0,0,0,gamma_mean,gamma_stddev]
-# ]
-# where n1,g1 are the first points generated by the normal dist and gamma dist, etc
+it should randomly generate N distribution types, where N is NUM_DIMENSIONS
+the function should call the randomly chosen distribution functions from distributions.py, and make an array of N-tuples out of the result
+it should also make an array of labels, which is the concatenation of the 1hot, mean and stddev of each distribution
+return a pair of those arrays
 
-# count is the number of examples to generate
-# sample_size is the number of points to generate for each distribution
+e.g., if NUM_DIMENSIONS is 2 and SAMPLE_SIZE is 3, we randomly choose 3 dimensions (say normal and gamma)
+the function should return something that looks like:
+[
+   [n1, n2, n3, g1, g2, g3],
+   [0,0,0,0,0,0,1,0,0,normal_mean,normal_stddev,0,1,0,0,0,0,0,0,0,gamma_mean,gamma_stddev]
+]
+where n1,g1 are the first points generated by the normal dist and gamma dist, etc
+
+count is the number of examples to generate
+sample_size is the number of points to generate for each distribution
+'''
+
 def generate_multidim_data(dimensions, count, sample_size):
     data = []
 
     for _ in range(count):
         points = []
         labels = []
-        items = list(DISTRIBUTION_FUNCTIONS.items())
+        items = list(DISTRIBUTIONS.items())
         for _ in range(dimensions):
-            choice = np.random.choice(len(items))
-            _, dist_func = items[choice]
-            dist_points, dist_labels = dist_func(sample_size)
+            dist_name = np.random.choice(list(DISTRIBUTIONS.keys()))
+            logger.debug(f'dist_name: {dist_name}')
+
+            # dist_class = np.random.choice(DISTRIBUTIONS.items())
+            dist_class = DISTRIBUTIONS[dist_name]
+            # Instantiate the class!!! 
+            dist_object = dist_class()
+
+            dist_points = dist_object.rng(sample_size)
+            logger.debug(f'dist_points from this dist: {dist_points}')
+            dist_points = list(dist_points)
+            logger.debug(f'dist_points but cast to list: {dist_points}')
             points.append(dist_points)
-            labels.extend(dist_labels)
+
+            labels = dist_object.get_label()
+            logger.debug(f'labels from this dist: {labels}')
+            labels.extend(labels)
 
         # List of each dimension's points: [[1,3,5], [2,4,6]]
         logger.debug(f"Each dimension's points: {points}")
