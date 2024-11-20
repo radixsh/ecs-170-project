@@ -204,35 +204,36 @@ def generate_data(count, sample_size):
 
 # count is the number of examples to generate
 # sample_size is the number of points to generate for each distribution
-# def generate_multidim_data(dimensions, count, sample_size):
-#     data=[]
-# 
-#     for _ in range(count):
-#         points = []
-#         labels = []
-#         items = list(DISTRIBUTION_FUNCTIONS.items())
-#         for _ in range(dimensions):
-#             choice = np.random.choice(len(items))
-#             _, dist_func = items[choice]
-#             dist_points, dist_labels = dist_func(sample_size)
-#             points.append(dist_points)
-#             labels.extend(dist_labels)
-#         points = list(zip(*points))
-#         print(points)
-#         data.append((points, labels))
-#     print(data)
-#     return data
+def generate_multidim_data(dimensions, count, sample_size):
+    data=[]
+
+    for _ in range(count):
+        points = []
+        labels = []
+        items = list(DISTRIBUTION_FUNCTIONS.items())
+        for _ in range(dimensions):
+            choice = np.random.choice(len(items))
+            _, dist_func = items[choice]
+            dist_points, dist_labels = dist_func(sample_size)
+            dist_points = np.ravel(dist_points)  # Ensure 1D array of size `sample_size`
+            points.append(dist_points)
+            labels.extend(dist_labels)
+        points = list(zip(*points))
+        # Debug: Output the points and labels for inspection
+        print("Formatted Points (Sampled Data):", points)
+        print("Labels:", labels)
+
+        data.append((points, labels))
+    print(data)
+    return data
 
 def make_dataset(filename, examples_count):
     start = time.time()
-    raw_data = generate_data(count=examples_count,
-                             sample_size=CONFIG['SAMPLE_SIZE'])
-    #raw_data = generate_multidim_data(dimensions=NUM_DIMENSIONS,
-    #                                  count=examples_count,
-    #                                  sample_size=CONFIG['SAMPLE_SIZE'])
-    # raw_data = generate_multidim_data(dimensions=2,
-    #                                   count=examples_count,
-    #                                   sample_size=3)
+    #raw_data = generate_data(count=examples_count,
+    #                         sample_size=CONFIG['SAMPLE_SIZE'])
+    raw_data = generate_multidim_data(dimensions=NUM_DIMENSIONS,
+                                     count=examples_count,
+                                     sample_size=CONFIG['SAMPLE_SIZE'])
     samples = np.array([elem[0] for elem in raw_data])
     labels = np.array([elem[1] for elem in raw_data])
     dataset = MyDataset(samples, labels)

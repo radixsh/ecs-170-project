@@ -20,4 +20,4 @@ DEVICE = (
         "cpu"           # Fastest for small networks because moving stuff to GPU is slow
         )
 
-NUM_DIMENSIONS = 1          # How many dimensions of data we're currently working with
+NUM_DIMENSIONS = 2          # How many dimensions of data we're currently working with
