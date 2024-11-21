@@ -95,7 +95,7 @@ def make_dataset(config, mode):
     # Get the correct size
     examples_count = config[f'{mode}_SIZE']
 
-    filename = make_filename(mode,
+    filename = make_data_filename(mode,
                             examples_count,
                             config['SAMPLE_SIZE'],
                             NUM_DIMENSIONS)
@@ -133,7 +133,7 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
 
         # Check the type, that there's enough data, 
         # the sample size is right, and that num_dimensions matches
-        file_info = parse_filename(file)
+        file_info = parse_data_filename(file)
         if file_info['TYPE'] == mode \
             and file_info['SIZE'] >= config[f'{mode}_SIZE'] \
             and file_info['SAMPLE_SIZE'] == config['SAMPLE_SIZE'] \

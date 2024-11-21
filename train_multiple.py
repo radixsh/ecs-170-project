@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 
 from env import DEVICE, CONFIG, HYPERPARAMETER, VALUES, NUM_DIMENSIONS
 from build_model import build_model
-from custom_functions import CustomLoss, make_filename, DISTRIBUTIONS
+from custom_functions import CustomLoss, make_weights_filename, DISTRIBUTIONS
 from generate_data import make_dataset, get_dataloader, MyDataset
 
 logger = logging.getLogger(__name__)
@@ -80,17 +80,18 @@ def main():
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)
 
-    # Filenames for various models
-    # TODO: make more informative model names?
-    dests = []
-    for i in VALUES:
-        label = HYPERPARAMETER.lower().replace(' ', '_')
-        dests.append(f'{models_directory}/weights_{label}_{i}.pth')
+    
 
     # Train one model per training_size
     for i, value in enumerate(VALUES):
         # Update TRAINING_SIZE in the dict from env.py
         CONFIG[HYPERPARAMETER] = value 
+
+        # Filenames for various models
+        dest_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
+                                              CONFIG['SAMPLE_SIZE'],
+                                              NUM_DIMENSIONS)
+        dest_filename = os.path.join("models", dest_filename)
 
         # Initialize a new neural net
         input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
@@ -110,10 +111,10 @@ def main():
         model_weights = pipeline(model, CONFIG)
         if model_weights is None:
             logger.info("pipeline() did not return anything!!! mehhhhhh!!!!!")
-        torch.save(model_weights, dests[i])
+        torch.save(model_weights, dest_filename)
 
         train_end = time.time()
-        logger.debug(f"Wrote out weights to {dests[i]} "
+        logger.debug(f"Wrote out weights to {dest_filename} "
                      f"(finished in {train_end - train_start:.2f} seconds)")
 
     end = time.time()

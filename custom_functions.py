@@ -8,18 +8,46 @@ import scipy.stats as sps
 import numpy as np
 import mpmath
 
-# Formats the filename
+# Formats the filename for a model weight file
+# Format: "weights_train_$TRAIN_SIZE$_sample_$SAMPLE_SIZE$_dims_$NUM_DIMS$"
+# Example: "weights_train_1000_sample_30_dims_2"
+def make_weights_filename(train_size, sample_size, num_dims):
+    return (f"weights_train_{train_size}"
+            f"sample_{sample_size}_"
+            f"dims_{num_dims}"
+            f".pth")
+
+# Checks the filename for a model weight file
+# returns a dict of the train size, sample size, and num_dims
+def parse_weights_filename(filename):
+    # Define the regex pattern
+    pattern = r"weights_train_(\d+)_sample_(\d+)_dims_(\d+).pth"
+    
+    # Match the pattern with the filename
+    match = re.match(pattern, filename)
+    if not match:
+        raise ValueError("Filename does not match the expected format.")
+    
+    # Extract the values and convert to appropriate types
+    train_size, sample_size, num_dims = match.groups()
+    return {
+        "TRAIN_SIZE": int(train_size),
+        "SAMPLE_SIZE": int(sample_size),
+        "NUM_DIMS": int(num_dims)
+    }
+
+# Formats the filename for a dataset
 # Format: "dataset_$TYPE$_len_$TRAIN/TEST_SIZE$_sample_$SAMPLE_SIZE$_dims_$NUM_DIMS$"
 # Example: "dataset_train_len_1000_sample_30_dims_2"
-def make_filename(type, len, sample_size, num_dims):
+def make_data_filename(type, len, sample_size, num_dims):
     return (f"dataset_{type}_"
             f"len_{len}_"
             f"sample_{sample_size}_"
             f"dims_{num_dims}")
 
-# Checks the filename
+# Checks the filename for a dataset
 # returns a dict of the type, length, sample size, and num_dims
-def parse_filename(filename):
+def parse_data_filename(filename):
     # Define the regex pattern
     pattern = r"dataset_(TRAIN|TEST)_len_(\d+)_sample_(\d+)_dims_(\d+)"
     
