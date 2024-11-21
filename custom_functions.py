@@ -20,8 +20,9 @@ def make_filename(type, len, sample_size, num_dims):
 # Checks the filename
 # returns a dict of the type, length, sample size, and num_dims
 def parse_filename(filename):
+    print(f'checking {filename}')
     # Define the regex pattern
-    pattern = r"dataset_(train|test)_len_(\d+)_sample_(\d+)_dims_(\d+)"
+    pattern = r"dataset_(TRAIN|TEST)_len_(\d+)_sample_(\d+)_dims_(\d+)"
     
     # Match the pattern with the filename
     match = re.match(pattern, filename)

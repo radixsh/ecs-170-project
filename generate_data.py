@@ -89,20 +89,14 @@ def generate_multidim_data(dimensions, count, sample_size):
 
 def make_dataset(config, mode):
     start = time.time()
-    
+
     # Get the correct size
-    if mode == 'train':
-        examples_count = config['TRAINING_SIZE']
-    elif mode == 'test':
-        examples_count = config['TEST_SIZE']
+    examples_count = config[f'{mode}_SIZE']
 
     filename = make_filename(mode,
-                            config['TRAINING_SIZE'],
+                            examples_count,
                             config['SAMPLE_SIZE'],
                             NUM_DIMENSIONS)
-
-    # raw_data = generate_data(count=examples_count,
-    #                          sample_size=CONFIG['SAMPLE_SIZE'])
 
     raw_data = generate_multidim_data(dimensions=NUM_DIMENSIONS,
                                       count=examples_count,
@@ -121,50 +115,42 @@ def make_dataset(config, mode):
 
     return dataset
 
-def get_dataloader(config, filename, mode):
-    #TODO: CHANGE HOW FILENAME GETS PASSED IN
-    file_path = os.path.join("data", filename)
-    if os.path.exists(file_path):
-        dataset = torch.load(filename)
+def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
+    good_file = None
+    # 'data' directory is already guaranteed to exist from call in main
+    # iterate through 'data' directory and look for any good file
+    # sorry for bad control flow, maybe should be a helper
+    for file in os.listdir('data'):
+
+        # Catches weird stuff (like .DS_store)
+        try:
+            if file[:7] != 'dataset':
+                continue
+        except:
+            continue
+
+        # Check the type, that there's enough data, and that the sample size is right
+        file_info = parse_filename(file)
+        if file_info['TYPE'] != mode:
+            continue
+        elif file_info['SIZE'] <= config[f'{mode}_SIZE']:
+            continue
+        elif file_info['SAMPLE_SIZE'] != config['SAMPLE_SIZE']:
+            continue
+        elif file_info['NUM_DIMS'] != NUM_DIMENSIONS:
+            continue
+        else:
+            good_file = file
+    
+    # If no valid data is found, then generate some new data
+    if good_file:
+        good_file = os.path.join("data", good_file)
+        logger.info(f"Loading data from {good_file}...")
+        dataset = torch.load(good_file)
     else:
-        logger.info(f'Generating fresh data...')
+        logger.info(f'No valid data found, generating fresh data...')
         dataset = make_dataset(config, mode)
-
-
-    ## TODO: refactor this.
-    # try:
-    #     dataset = torch.load(filename)
-
-    #     if len(dataset) > examples_count:
-    #         dataset = dataset[:examples_count]
-
-    #     # If examples_count is passed in, then adhere to it. Otherwise,
-    #     # examples_count is default value, indicating dataset can have any size
-    #     acceptable_count = (len(dataset) == examples_count \
-    #                         or examples_count == -1)
-
-    #     dataset_sample_size = len(dataset.__getitem__(0)[0])
-    #     acceptable_sample_size = (config['SAMPLE_SIZE'] * NUM_DIMENSIONS == dataset_sample_size)
-
-    #     if not isinstance(dataset, Dataset):
-    #         raise Exception(f'Could not read dataset from {filename}')
-    #     if not acceptable_count:
-    #         raise Exception(f"Incorrect dataset size: {len(dataset)}")
-    #     if not acceptable_sample_size:
-    #         raise Exception(f"Incorrect sample size: model expects "
-    #                         f"{config['SAMPLE_SIZE']} points as input, but "
-    #                         f"this dataset would give {dataset_sample_size}")
-
-    #     logger.info(f"Using dataset from {filename} (size: {len(dataset)})")
-
-    # except Exception as e:
-    #     logger.info(e)
-    #     logger.info(f'Generating fresh data...')
-    #     dataset = make_dataset(filename, examples_count)
-
-    # If no filename is passed in, the file does not exist, or the file's
-    # contents do not represent a DataLoader as expected, then generate some
-    # new data, and write it out to the given filename
+    
     dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
     return dataloader
 
@@ -173,5 +159,5 @@ def get_dataloader(config, filename, mode):
 if __name__ == "__main__":
     data_directory = 'data'
     os.makedirs(data_directory, exist_ok=True)
-    make_dataset(CONFIG,mode='train')
-    make_dataset(CONFIG,mode='test')
+    make_dataset(CONFIG,mode='TRAIN')
+    make_dataset(CONFIG,mode='TEST')

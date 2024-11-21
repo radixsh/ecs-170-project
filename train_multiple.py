@@ -54,15 +54,8 @@ def pipeline(model, config):
     # Loss function can't be in config dict because custom_loss_function.py
     # depends on config dict to build the loss function
     loss_function = CustomLoss()
-
-    filename = make_filename('train',
-                             config,
-                             config['SAMPLE_SIZE'],
-                             NUM_DIMENSIONS)
     
-    train_dataloader = get_dataloader(config, 
-                                      filename,
-                                      'train')
+    train_dataloader = get_dataloader(config, 'TRAIN')
 
     logger.info(f"Training with {HYPERPARAMETER} = "
                 f"{config[HYPERPARAMETER]}...")
@@ -81,14 +74,14 @@ def main():
     start = time.time()
 
     # Make sure the 'data' directory exists
-    data_directory = 'data'
-    os.makedirs(data_directory, exist_ok=True)
+    os.makedirs('data', exist_ok=True)
 
     # Make sure the models directory exists
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)
 
     # Filenames for various models
+    # TODO: make more informative model names?
     dests = []
     for i in VALUES:
         label = HYPERPARAMETER.lower().replace(' ', '_')
@@ -118,7 +111,7 @@ def main():
                      f"(finished in {train_end - train_start:.2f} seconds)")
 
     end = time.time()
-    logger.info(f"Finished training {dests} models in {end - start:.2f} seconds")
+    #logger.info(f"Finished training {dests} models in {end - start:.2f} seconds")
 
 if __name__ == "__main__":
     main()
