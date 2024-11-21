@@ -1,11 +1,45 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset
 from env import NUM_DIMENSIONS, CONFIG
-from generate_data import DISTRIBUTION_FUNCTIONS
+import re
+import math
+import scipy.stats as sps
+import numpy as np
+import mpmath
+
+# Formats the filename
+# Format: "dataset_$TYPE$_len_$TRAIN/TEST_SIZE$_sample_$SAMPLE_SIZE$_dims_$NUM_DIMS$"
+# Example: "dataset_train_len_1000_sample_30_dims_2"
+def make_filename(type, len, sample_size, num_dims):
+    return (f"dataset_{type}_"
+            f"len_{len}_"
+            f"sample_{sample_size}_"
+            f"dims_{num_dims}")
+
+# Checks the filename
+# returns a dict of the type, length, sample size, and num_dims
+def parse_filename(filename):
+    # Define the regex pattern
+    pattern = r"dataset_(train|test)_len_(\d+)_sample_(\d+)_dims_(\d+)"
+    
+    # Match the pattern with the filename
+    match = re.match(pattern, filename)
+    if not match:
+        raise ValueError("Filename does not match the expected format.")
+    
+    # Extract the values and convert to appropriate types
+    type, size, sample_size, num_dims = match.groups()
+    return {
+        "TYPE": type,
+        "SIZE": int(size),
+        "SAMPLE_SIZE": int(sample_size),
+        "NUM_DIMS": int(num_dims)
+    }
 
 # Gets the indices specified of the input... goofy, but convenient
 def get_indices(dists=False,mean=False,stddev=False, dims=[1]):
-    num_dists = len(DISTRIBUTION_FUNCTIONS)
+    num_dists = len(DISTRIBUTIONS)
     out = []
     for dim in dims:
         if dists:
@@ -64,7 +98,7 @@ class CustomLoss(nn.Module):
         ])
 
         # Number of distribution functions
-        self.num_dists = len(DISTRIBUTION_FUNCTIONS)
+        self.num_dists = len(DISTRIBUTIONS)
 
     def get_weights(self,catted_1hot):
         weights = torch.empty(0)
@@ -114,3 +148,221 @@ class CustomLoss(nn.Module):
         # classification loss of 0 means loss = regression loss
         # classification loss of 1 means loss -> infinity
         return (regression_loss + self.alpha * classification_loss) / (1 - classification_loss)
+
+### SEED THE RNG
+rng = np.random.default_rng()
+
+### DISTRIBUTION CLASSES
+
+## CLASS HEADERS
+# # Parent Class
+# class Distribution(): pass
+#
+# # Child Classes
+# class Beta(Distribution): pass
+# class Gamma(Distribution): pass
+# class Gumbel(Distribution): pass
+# class Laplace(Distribution): pass
+# class Logistic(Distribution): pass
+# class Lognormal(Distribution): pass
+# class Normal(Distribution): pass
+# class Rayleigh(Distribution): pass
+# class Wald(Distribution): pass
+
+## CLASS DEFINITIONS
+
+# Parent class
+class Distribution:
+    def __init__(self,mean,stddev,support,name):
+        self.name = name
+        self.support = support
+        self.mean = mean if isinstance(mean, float) else self.generate_mean()
+        self.stddev = stddev if isinstance(stddev, float) else self.generate_stddev()
+        self.onehot = [0,0,0,0,0,0,0,0,0]
+
+    def __str__(self):
+        string = f"self.name: {self.name}, "
+        string += f"self.support: {self.support}, "
+        string += f"self.function: {self.onehot}, "
+        string += f"self.mean: {self.mean}, "
+        string += f"self.stddev: {self.stddev}"
+        return string
+
+    def get_label(self):
+        label = self.onehot + [self.mean, self.stddev]
+        return label
+
+    # Returns a random positive real according to the lognormal distribution
+    # with mean and stddev 1. Useful for generating stddevs and positive means.
+    def random_pos(self):
+        return rng.lognormal(mean = -math.log(2) / math.sqrt(2), sigma=math.sqrt(math.log(2)))
+
+    def generate_mean(self):
+        # Support is all of R
+        if self.support == 'R':
+            return rng.normal(0, 1)
+        # Support is positive
+        elif self.support == 'R+':
+            return self.random_pos()
+        # Otherwise, it's the beta distribution
+        # random val in (0,1)
+        elif self.support == 'I':
+            sign = rng.choice([-1, 1])
+            open_interval = rng.uniform() * sign
+            return (open_interval + 1) / 2
+
+    def generate_stddev(self):
+        # Special behavior for some dists
+        # Default case
+        if self.name not in ['Beta','Rayleigh']:
+            return self.random_pos()
+        # Beta's "mean" function is strange.
+        elif self.name == 'Beta':
+            open_interval = self.generate_mean()
+            upper_bound = (self.mean - (self.mean ** 2))
+            return open_interval * upper_bound
+        # Rayleigh
+        else:
+            weird_constant = math.sqrt((4 / math.pi)  - 1)
+            return self.mean * weird_constant
+
+# Child classes
+class Beta(Distribution):
+    def __init__(self,mean="not set",stddev="not set"):
+        super().__init__(mean, stddev, support='I',name='Beta')
+        self.onehot = [1,0,0,0,0,0,0,0,0]
+        self.alpha = math.sqrt((((self.mean ** 2) - (self.mean ** 3)) / self.stddev) - self.mean)
+        self.beta = (self.alpha / self.mean) - self.alpha
+
+    def rng(self,sample_size):
+        return rng.beta(self.alpha,self.beta,sample_size)
+
+    def pdf(self,x):
+        return sps.beta(x,self.alpha,self.beta)
+
+class Gamma(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R+',name='Gamma')
+        self.onehot = [0,1,0,0,0,0,0,0,0]
+        self.shape = (self.mean / self.stddev) ** 2
+        self.scale = (self.stddev ** 2) / self.mean
+
+    def rng(self,sample_size):
+        return rng.gamma(self.shape,self.scale,sample_size)
+
+    def pdf(self,x):
+        return sps.gamma(x,self.shape,scale=self.scale)
+
+class Gumbel(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R',name='Gumbel')
+        self.onehot = [0,0,1,0,0,0,0,0,0]
+        self.scale = self.stddev * math.sqrt(6) / math.pi
+        self.loc = self.mean - self.scale * float(mpmath.euler)
+
+    def rng(self,sample_size):
+        return rng.gumbel(self.loc,self.scale,sample_size)
+
+    def pdf(self,x):
+        return sps.gumbel_r(x,loc=self.loc,scale=self.scale)
+
+class Laplace(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R',name='Laplace')
+        self.onehot = [0,0,0,1,0,0,0,0,0]
+        self.scale = self.stddev * math.sqrt(2)
+
+    def rng(self,sample_size):
+        return rng.laplace(self.mean,self.scale,sample_size)
+
+    def pdf(self,x):
+        return sps.laplace(x,loc=self.mean,scale=self.scale)
+
+class Logistic(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R',name='Logistic')
+        self.onehot = [0,0,0,0,1,0,0,0,0]
+        self.scale = self.stddev * math.sqrt(3) / math.pi
+
+    def rng(self,sample_size):
+        return rng.logistic(self.mean,self.scale,sample_size)
+
+    def pdf(self,x):
+        return sps.logistic(x,loc=self.mean,scale=self.scale)
+
+class Lognormal(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R+',name='Lognormal')
+        self.onehot = [0,0,0,0,0,1,0,0,0]
+        # TODO: CHECK THIS MATH
+        self.shape = math.sqrt(math.log(1 + (self.stddev / self.mean) ** 2))
+        self.loc = math.log((self.mean ** 2) / math.sqrt((self.mean ** 2) + (self.stddev ** 2)))
+
+    def rng(self,sample_size):
+        return rng.lognormal(self.loc,self.shape,sample_size)
+
+    def pdf(self,x):
+        return sps.lognorm(x,self.shape, loc=self.loc)
+
+class Normal(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R',name='Normal')
+        self.onehot = [0,0,0,0,0,0,1,0,0]
+
+    def rng(self,sample_size):
+        return rng.normal(self.mean,self.stddev,sample_size)
+
+    def pdf(self,x):
+        return sps.norm(x,loc=self.mean,scale=self.stddev)
+
+class Rayleigh(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R+',name='Rayleigh')
+        self.onehot = [0,0,0,0,0,0,0,1,0]
+        self.scale = self.mean * math.sqrt(2 / math.pi)
+        self.stddev = self.mean * math.sqrt((4 / math.pi)  - 1)
+
+    def rng(self,sample_size):
+        return rng.rayleigh(self.scale,sample_size)
+
+    def pdf(self,x):
+        return sps.rayleigh(x,loc=self.mean,scale=self.scale)
+
+class Wald(Distribution):
+    def __init__(self, mean="not set", stddev="not set"):
+        super().__init__(mean, stddev, support='R+',name='Wald')
+        self.onehot = [0,0,0,0,0,0,0,0,1]
+        self.lam = (self.mean ** 3) / (self.stddev ** 2)
+        self.mu = self.mean / self.lam
+
+    def rng(self,sample_size):
+        return rng.wald(self.mean,self.lam,sample_size)
+
+    def pdf(self,x):
+        return sps.invgauss(x,self.mu, scale = self.lam)
+
+# Prob move inside of class
+DISTRIBUTIONS = {
+    "beta": Beta,
+    "gamma": Gamma,
+    "gumbel": Gumbel,
+    "laplace": Laplace,
+    "logistic": Logistic,
+    "lognormal": Lognormal,
+    "normal": Normal,
+    "rayleigh": Rayleigh,
+    "wald": Wald,
+}
+
+class MyDataset(Dataset):
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        sample = self.data[index]
+        label = self.labels[index]
+        return sample, label

@@ -6,8 +6,8 @@ from torch.utils.data import Dataset
 
 from env import NUM_DIMENSIONS, DEVICE, CONFIG, HYPERPARAMETER, VALUES
 from build_model import build_model
-from custom_functions import CustomLoss
-from generate_data import make_dataset, get_dataloader, MyDataset, DISTRIBUTIONS
+from custom_functions import CustomLoss, make_filename, DISTRIBUTIONS
+from generate_data import make_dataset, get_dataloader, MyDataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -55,9 +55,14 @@ def pipeline(model, config):
     # depends on config dict to build the loss function
     loss_function = CustomLoss()
 
-    # TODO
-    train_dataloader = get_dataloader(config, 'data/train_dataset',
-                                      examples_count=config['TRAINING_SIZE'])
+    filename = make_filename('train',
+                             config,
+                             config['SAMPLE_SIZE'],
+                             NUM_DIMENSIONS)
+    
+    train_dataloader = get_dataloader(config, 
+                                      filename,
+                                      'train')
 
     logger.info(f"Training with {HYPERPARAMETER} = "
                 f"{config[HYPERPARAMETER]}...")
