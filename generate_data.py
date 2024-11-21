@@ -331,8 +331,14 @@ def make_dataset(filename, examples_count):
     return dataset
 
 def get_dataloader(config, filename=None, examples_count=-1):
+    #TODO: Refactor this
+
+
     try:
         dataset = torch.load(filename)
+
+        if len(dataset) > examples_count:
+            dataset = dataset[:examples_count]
 
         # If examples_count is passed in, then adhere to it. Otherwise,
         # examples_count is default value, indicating dataset can have any size
@@ -340,7 +346,7 @@ def get_dataloader(config, filename=None, examples_count=-1):
                             or examples_count == -1)
 
         dataset_sample_size = len(dataset.__getitem__(0)[0])
-        acceptable_sample_size = (config['SAMPLE_SIZE'] == dataset_sample_size)
+        acceptable_sample_size = (config['SAMPLE_SIZE'] * NUM_DIMENSIONS == dataset_sample_size)
 
         if not isinstance(dataset, Dataset):
             raise Exception(f'Could not read dataset from {filename}')
@@ -370,5 +376,6 @@ if __name__ == "__main__":
     data_directory = 'data'
     os.makedirs(data_directory, exist_ok=True)
 
+    #TODO
     make_dataset('data/train_dataset', examples_count=CONFIG['TRAINING_SIZE'])
     make_dataset('data/test_dataset', examples_count=CONFIG['TEST_SIZE'])

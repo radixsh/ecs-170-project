@@ -55,6 +55,7 @@ def pipeline(model, config):
     # depends on config dict to build the loss function
     loss_function = CustomLoss()
 
+    # TODO
     train_dataloader = get_dataloader(config, 'data/train_dataset',
                                       examples_count=config['TRAINING_SIZE'])
 
