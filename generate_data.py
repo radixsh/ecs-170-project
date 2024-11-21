@@ -131,25 +131,20 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
         except:
             continue
 
-        # Check the type, that there's enough data, and that the sample size is right
+        # Check the type, that there's enough data, 
+        # the sample size is right, and that num_dimensions matches
         file_info = parse_filename(file)
-        if file_info['TYPE'] != mode:
-            continue
-        elif file_info['SIZE'] < config[f'{mode}_SIZE']:
-            continue
-        elif file_info['SAMPLE_SIZE'] != config['SAMPLE_SIZE']:
-            continue
-        elif file_info['NUM_DIMS'] != NUM_DIMENSIONS:
-            continue
-        else:
-            good_file = file
+        if file_info['TYPE'] == mode \
+            and file_info['SIZE'] >= config[f'{mode}_SIZE'] \
+            and file_info['SAMPLE_SIZE'] == config['SAMPLE_SIZE'] \
+            and file_info['NUM_DIMS'] == NUM_DIMENSIONS:
+                good_file = os.path.join("data", file)
+                break
     
-    # If no valid data is found, then generate some new data
-    if good_file:
-        good_file = os.path.join("data", good_file)
+    if good_file: 
         logger.info(f"Loading data from {good_file}...")
         dataset = torch.load(good_file)
-    else:
+    else: # If no valid data is found, then generate some new data
         logger.info(f'No valid data found, generating fresh data...')
         dataset = make_dataset(config, mode)
     
