@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
-from env import NUM_DIMENSIONS, CONFIG
+from env import CONFIG, NUM_DIMENSIONS
 import re
 import math
 import scipy.stats as sps
@@ -20,7 +20,6 @@ def make_filename(type, len, sample_size, num_dims):
 # Checks the filename
 # returns a dict of the type, length, sample size, and num_dims
 def parse_filename(filename):
-    print(f'checking {filename}')
     # Define the regex pattern
     pattern = r"dataset_(TRAIN|TEST)_len_(\d+)_sample_(\d+)_dims_(\d+)"
     
@@ -103,10 +102,12 @@ class CustomLoss(nn.Module):
 
     def get_weights(self,catted_1hot):
         weights = torch.empty(0)
-        for n in range(NUM_DIMENSIONS):
-            # Slice up the input vector
-            curr = catted_1hot[n * self.num_dists:(n+1) * self.num_dists]
-            # ??? torch pls
+        # Loop through each dimension
+        for n in range(1,NUM_DIMENSIONS+1):
+            # Slice up the input vector to just look at the current dimension
+            curr = catted_1hot[(n-1) * self.num_dists:n * self.num_dists]
+            # Look up the appropriate row in the dist var matrix
+            #curr_weights = self.dist_var_matrix[torch.argmax(curr)]
             curr_weights = self.dist_var_matrix[(curr == 1).nonzero(as_tuple=True)[0]]
             # append
             weights = torch.cat((weights,curr_weights),1)

@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import time
 from custom_functions import *
-from env import CONFIG, NUM_DIMENSIONS
+from env import CONFIG
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -71,16 +71,18 @@ def generate_multidim_data(dimensions, count, sample_size):
             logger.debug(f'dist_points but cast to list: {dist_points}')
             points.append(dist_points)
 
-            labels = dist_object.get_label()
+            labels += dist_object.get_label()
             logger.debug(f'labels from this dist: {labels}')
-            labels.extend(labels)
+            # don't use .extend please, obfuscates what's going on
+            #labels.extend(labels)
 
         # List of each dimension's points: [[1,3,5], [2,4,6]]
         logger.debug(f"Each dimension's points: {points}")
 
         # Flattened: [1,3,5, 2,4,6]
         # The actual points in the 2D distribution will be (1,2), (3,4), (5,6)
-        points = [item for dim in points for item in dim]
+        #points = [item for dim in points for item in dim]
+        points = np.ravel(points,order='C')
         logger.debug(f"Flattened: {points}")
 
         data.append((points, labels))
@@ -133,7 +135,7 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
         file_info = parse_filename(file)
         if file_info['TYPE'] != mode:
             continue
-        elif file_info['SIZE'] <= config[f'{mode}_SIZE']:
+        elif file_info['SIZE'] < config[f'{mode}_SIZE']:
             continue
         elif file_info['SAMPLE_SIZE'] != config['SAMPLE_SIZE']:
             continue

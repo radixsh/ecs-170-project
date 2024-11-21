@@ -4,7 +4,7 @@ import torch
 import os
 from torch.utils.data import Dataset
 
-from env import NUM_DIMENSIONS, DEVICE, CONFIG, HYPERPARAMETER, VALUES
+from env import DEVICE, CONFIG, HYPERPARAMETER, VALUES, NUM_DIMENSIONS
 from build_model import build_model
 from custom_functions import CustomLoss, make_filename, DISTRIBUTIONS
 from generate_data import make_dataset, get_dataloader, MyDataset
@@ -98,7 +98,13 @@ def main():
         model = build_model(input_size, output_size).to(DEVICE)
 
         # Train the model anew, and save the resulting model's weights out
-        logger.debug(f"Training model with {HYPERPARAMETER}={value}...")
+        logger.info(f"Training model with hyperparameters:\n"
+                     f"TRAIN_SIZE = {CONFIG['TRAIN_SIZE']}\n"
+                     f"SAMPLE_SIZE = {CONFIG['SAMPLE_SIZE']}\n"
+                     f"BATCH_SIZE = {CONFIG['BATCH_SIZE']}\n"
+                     f"EPOCHS = {CONFIG['EPOCHS']}\n"
+                     f"NUM_DIMENSIONS = {NUM_DIMENSIONS}\n"
+                     f"Variable hyperparameter is {HYPERPARAMETER}")
         train_start = time.time()
 
         model_weights = pipeline(model, CONFIG)
