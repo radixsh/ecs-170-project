@@ -189,9 +189,7 @@ class Rayleigh(Distribution):
         self.stddev = self.mean * math.sqrt((4 / math.pi)  - 1)
 
     def rng(self,sample_size):
-        # TODO: fix
-        # return rng.rayleigh(self.mean,self.scale,sample_size)
-        return rng.rayleigh(self.mean,sample_size)
+        return rng.rayleigh(self.scale,sample_size)
 
     def pdf(self,x):
         return sps.rayleigh(x,loc=self.mean,scale=self.scale)
