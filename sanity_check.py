@@ -6,7 +6,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 
 from env import CONFIG, NUM_DIMENSIONS, DEVICE
-from generate_data import generate_data, DISTRIBUTION_FUNCTIONS, MyDataset
+from generate_data import generate_data, DISTRIBUTIONS, MyDataset
 from build_model import build_model
 
 logger = logging.getLogger(__name__)
@@ -14,62 +14,44 @@ logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
-# defunct, ignore
-'''
-def plot_both(actuals, guesses):
-    # actuals = []
-    # First plot the actual continuous function (from labels)
-
-    # Then make scatter plot of what was provided
-
-    # Then plot the continuous function guessed by model
-    both = means + stddevs + [0]
-    plt.ylim(min(both) * 1.1, max(both) * 1.1)
-    plt.ylabel(name)
-
-    x_values = np.float64(x_values)
-    sorted_indices = np.argsort(x_values)
-    x_values = x_values[sorted_indices]
-    means = np.array(means)[sorted_indices]
-    stddevs = np.array(stddevs)[sorted_indices]
-
-    plt.scatter(x_values, means, color="royalblue", label="Means")
-    mean_slope, mean_intercept = np.polyfit(x_values, means, deg=1)
-    # Line of best fit only looks bent because of logarithmic scaling
-    mean_trend = np.polyval([mean_slope, mean_intercept], x_values)
-    plt.plot(x_values, mean_trend, color="royalblue",
-             label=f'Mean slope: {mean_slope}')
-
-    plt.scatter(x_values, stddevs, color="tomato", label="Stddevs")
-    stddev_slope, stddev_intercept = np.polyfit(x_values, stddevs, deg=1)
-    stddev_trend = stddev_slope * x_values + stddev_intercept
-    plt.plot(x_values, stddev_trend, color="tomato",
-             label=f'Stddev slope: {stddev_slope}')
-
-    plt.gca().set_xscale('log')
-    plt.xlabel(HYPERPARAMETER)
-
-    plt.title(name)
-    plt.legend(bbox_to_anchor=(1,1), loc="upper left")
-    destination = f"results/{HYPERPARAMETER.lower()}_{name.replace(' ', '_')}.png"
-    plt.savefig(destination, bbox_inches="tight")
-    plt.show()
-'''
-
 def generate_all9():
     data = []
-    for name, function in DISTRIBUTION_FUNCTIONS.items():
-        points, labels = function(CONFIG['SAMPLE_SIZE'])
+    for dist_name, dist_class in DISTRIBUTIONS.items():
+        instance = dist_class()
+        points = instance.rng(CONFIG['SAMPLE_SIZE'])
+        labels = instance.get_label()
         data.append((points, labels))
     return data
 
-# Input: x_values array and a `labels` vector. The labels vector might look like
-# [0, 0, 0, 0, 0, 0, 1, 0, 0, 3.14, 2.18].
-# Output: the appropriate numpy/scikit function, called on the given params.
-# For the above example, it would be scipy.stats.norm.pdf(x_values, 3.14, 2.18).
-def magic(x_values, labels):
-    # TODO
-    pass
+# Takes a one hot + mean + stddev vector
+# Returns a function object (one of ours, in custom_functions.py)
+def get_function(labels):
+    # Get the one-hot part of the labels vector
+    dists = labels[:len(DISTRIBUTIONS)]
+
+    # Identify the distribution family from the one-hot vector
+    one_hot_index = np.argmax(dists)
+
+    # Get the distribution class
+    items_list = list(DISTRIBUTIONS.items())
+    dist_name, dist_class = items_list[one_hot_index]
+
+    # Initialize and return an instance of this class
+    dist_object = dist_class(mean=labels[-2], stddev=labels[-1])
+    return dist_object
+
+# Takes a string which is 'R', 'R+', or 'I'
+# Returns a linspace object for pyplot to graph
+def get_domain(support):
+    if support == 'R':
+        return np.linspace(-10, 10, 100)
+    elif support == 'R+':
+        return np.linspace(0, 10, 100)
+    elif support == 'I':
+        return np.linspace(0, 1, 100)
+    else:
+        print(f"Can't recognize domain {support}")
+        return np.linspace(-10, 10, 100)
 
 # Sanity-check the model's performance (good for presentation)
 def main():
@@ -79,7 +61,7 @@ def main():
 
     # Build the model
     input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
-    output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
+    output_size = (len(DISTRIBUTIONS) + 2) * NUM_DIMENSIONS
     model = build_model(input_size, output_size).to(DEVICE)
 
     # Load the model's weights
@@ -96,8 +78,8 @@ def main():
     samples = np.array([elem[0] for elem in raw_data])
     labels = np.array([elem[1] for elem in raw_data])
     dataset = MyDataset(samples, labels)
-    # Set batch_size=1 because we will want to iterate through the dataloader, one
-    # query at a time
+    # Set batch_size=1 because we will iterate through the dataloader, one query
+    # at a time
     dataloader = DataLoader(dataset, batch_size=1)
 
     model.eval()
@@ -111,23 +93,28 @@ def main():
 
             # The first item is the only item because batch_size=1
             guesses = model(points)[0]
-
-            fig, ax = plt.subplots()
-
-            # Again, get first item only
             points = points[0]
-            ax.scatter(points, [0 for i in points])
+            labels = labels[0]
+            fig, ax = plt.subplots()
+            actual_color = 'royalblue'
+            ax.scatter(points, [0 for i in points], color=actual_color)
 
-            x = np.arange(-100, 100)    # Maybe replace with np.linspace()?
+            actual_dist = get_function(labels)
+            actual_domain = get_domain(actual_dist.support)
+            plt.plot(actual_domain, actual_dist.pdf(actual_domain),
+                     color=actual_color,
+                     label=f'actual: {actual_dist.name}')
 
-            # Possibly helpful, possibly not...
-            # dists = labels[:len(DISTRIBUTION_FUNCTIONS)]
-            # one_hot_index = np.argmax(dists)
-            # items_list = list(DISTRIBUTION_FUNCTIONS.items())
-            # function_name, _ = items_list[one_hot_index]
+            guess_dist = get_function(guesses)
+            guess_domain = get_domain(guess_dist.support)
+            plt.plot(actual_domain, guess_dist.pdf(actual_domain),
+                     color='orangered',
+                     label=f'guess: {guess_dist.name}')
 
-            plt.plot(x, magic(x, labels))
-            plt.plot(x, magic(x, guesses))
+            plt.xlabel('Domain')
+            plt.ylabel('Probability distribution functions')
+            plt.title('Predicted vs actual pdfs')
+            plt.legend()
 
             plt.show()
 
