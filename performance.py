@@ -6,7 +6,7 @@ import time
 import torch
 import os
 import re
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, f1_score
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, precision_recall_fscore_support, accuracy_score
 from torch.utils.data import DataLoader
 
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE
@@ -55,11 +55,37 @@ def get_mae_mape_r2(model, desired):
             mean_absolute_percentage_error(actuals, guesses),
             r2_score(actuals, guesses))
 
-# My sh*tty test (W.I.P) for measuring clssification.
-def get_classification_metrics(model, desired):
+# My test (W.I.P) for measuring clssification.
+def get_classification_metrics(model):
+    test_dataloader = get_dataloader(CONFIG, 'data/test_dataset', required_size=CONFIG['TEST_SIZE'])
+    model.eval()
     
+    true_labels = []
+    predicted_labels = []
+    
+    with torch.no_grad():
+        for X, y in test_dataloader:
+            X, y = X.to(DEVICE).float(), y.to(DEVICE).float()
 
-    return None
+            # true class - converts the one-hot encoding part into class indices
+            true_class = torch.argmax(y[0, :-2], dim=-1)  # Assumes the last 2 columns are "mean" and "stddevs"
+            true_labels.append(true_class.cpu().numpy())
+
+            # Same with predictions
+            pred = model(X)
+            predicted_class = torch.argmax(pred[0, :-2], dim=-1)
+            predicted_labels.append(predicted_class.cpu().numpy())
+
+    # Flatten lists
+    true_labels = np.concatenate(true_labels)
+    predicted_labels = np.concatenate(predicted_labels)
+    
+    # Compute classification metrics
+    precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predicted_labels, average='weighted')
+    accuracy = accuracy_score(true_labels, predicted_labels)
+
+    logger.info(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1-score: {f1:.4f}, Accuracy: {accuracy:.4f}")
+    return precision, recall, f1, accuracy
     
 
 
@@ -162,14 +188,11 @@ def main():
         stddev_mapes.append(stddev_mape)
         stddev_r2s.append(stddev_r2)
         
-        # Testing function calls to measure classification performance given F1 score, recall, precision, and accuracy.
-        # f1_score = 
-        # precision =
-        # recall = 
-        # accuracy =
+        # Testing function call to measure classification performance given F1 score, recall, precision, and accuracy.
+        f1, precision, recall, accuracy = get_classification_metrics(model)
 
-
-    
+        logger.info(f"Classification Metrics for {HYPERPARAMETER}={hyperparam}: "
+                    f"Precision=, F1={f1:.4f},{precision:.4f}, Recall={recall:.4f}, Accuracy={accuracy:.4f}")
 
         model_end = time.time()
         logger.info(f"{HYPERPARAMETER}={hyperparam}\t--> "
