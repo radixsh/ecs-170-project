@@ -6,7 +6,7 @@ import time
 import torch
 import os
 import re
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, accuracy_score
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, accuracy_score, f1_score, recall_score, precision_score
 from torch.utils.data import DataLoader
 
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE
@@ -66,7 +66,7 @@ def get_mae_mape_r2(model, desired):
             mean_absolute_percentage_error(actuals, guesses),
             r2_score(actuals, guesses))
 
-def get_accuracy(model):
+def get_classification_metrics(model):
     index = get_indices(dists=True)
     test_dataloader = get_dataloader(CONFIG, 'data/test_dataset',
                                      examples_count=CONFIG['TEST_SIZE'])
@@ -97,7 +97,13 @@ def get_accuracy(model):
     predictions = torch.argmax(guesses, dim=-1)
 
     # Ensure compatibility with sklearn (convert to NumPy)
-    return accuracy_score(actual_labels.cpu().numpy(), predictions.cpu().numpy())
+    return (accuracy_score(actual_labels.cpu().numpy(), predictions.cpu().numpy()),
+        f1_score(actual_labels.cpu().numpy(), predictions.cpu().numpy(),
+            average='weighted'),
+        recall_score(actual_labels.cpu().numpy(),
+            predictions.cpu().numpy(), average='weighted'),
+        precision_score(actual_labels.cpu().numpy(),
+            predictions.cpu().numpy(), average='weighted'))
 
 # regression pngs
 def regression_png(name, x_values, means, stddevs):
@@ -184,6 +190,9 @@ def main():
     stddev_r2s = []
     hyperparams = []       # For matplotlib graphs
     accuracies = []
+    f1s = []
+    recalls = []
+    precisions = []
     count = 0
     for filename in model_filenames:
         model_start = time.time()
@@ -221,14 +230,18 @@ def main():
         stddev_mapes.append(stddev_mape)
         stddev_r2s.append(stddev_r2)
 
-        accuracy = get_accuracy(model)
+        accuracy, f1, recall, precision = get_classification_metrics(model)
         accuracies.append(accuracy)
+        f1s.append(f1)
+        recalls.append(recall)
+        precisions.append(precision)
+
         model_end = time.time()
         logger.info(f"{HYPERPARAMETER}={hyperparam}\t--> "
                     f"mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
                     f"\n\t\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
                     f"\n\t\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "
-                    f"accuracy={accuracy:.2f}"
+                    f"\n\t\t\t--> accuracy={accuracy:.2f},\tf1={f1:.2f},\trecall={recall:.2f},\tprecision={precision:.2f}"
                     f"(Finished in {model_end - model_start:.2f} seconds)")
 
     end = time.time()
@@ -243,6 +256,9 @@ def main():
     regression_png("R^2 (correlation coefficient)",
                hyperparams, mean_r2s, stddev_r2s)
     classification_png("Accuracy", hyperparams, accuracies)
+    classification_png("F1", hyperparams, f1s)
+    classification_png("Recall", hyperparams, recalls)
+    classification_png("Precision", hyperparams, precisions)
 
 if __name__ == "__main__":
     main()
