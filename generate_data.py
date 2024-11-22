@@ -2,7 +2,7 @@ import logging
 import os
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 import time
 from custom_functions import *
 from env import CONFIG
@@ -151,6 +151,10 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
     if good_filename: 
         logger.info(f"Loading data from {good_filename}...")
         dataset = torch.load(good_filename)
+        if parse_data_filename(good_filename)['SIZE'] != config[f'{mode}_SIZE']:
+            logger.debug(f'Taking the first {config[f'{mode}_SIZE']} entries')
+            dataset = Subset(dataset, indices=range(config[f'{mode}_SIZE']))
+
     else: # If no valid data is found, then generate some new data
         logger.info(f'No valid data found, generating fresh data...')
         dataset = make_dataset(config, mode)
