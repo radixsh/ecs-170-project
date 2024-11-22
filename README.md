@@ -5,7 +5,7 @@
 * Run `train_multiple.py` to train multiple models on the different
   HYPERPARAMETER values you set. The model weights will be saved into a new
   `models` subdirectory.
-* Then run `regression_performance.py` to measure the performance for guessing
+* Then run `performance.py` to measure the performance for guessing
   mean and standard deviation; the scatter-plots will be saved as pngs into the
   `results` subdirectory.
 
@@ -38,11 +38,10 @@ Next steps:
 
 Bug list:
 - [ ] When attempting to tune hyperparameter BATCH_SIZE,
-  regression_performance.py does not properly generate big test datasets to
-  match up with the large BATCH_SIZE. This results in inaccurate regression
-  metrics, as each model is tested on a test dataset that is much smaller than
-  the batch size and therefore only gives one uninformed loss value per (or MAE,
-  etc.)
+  performance.py does not properly generate big test datasets to match up with
+  the large BATCH_SIZE. This results in inaccurate regression metrics, as each
+  model is tested on a test dataset that is much smaller than the batch size and
+  therefore only gives one uninformed loss value per (or MAE, etc.)
 
 ## Main useful files
 ### `train_multiple.py`
@@ -55,10 +54,10 @@ currently calls for `TRAINING_SIZE=300`, then `train_multiple.py` will
 regenerate a 300-entry training dataset and overwrite `data/train_dataset` with
 it.
 
-### `regression_performance.py`
-Creates scatter plots of regression performance of each model in the `models`
-directory wrt mean and stddev guesses (hence "regression" performance only, no
-classification yet). Performance is measured in terms of mean average error,
+### `performance.py`
+Creates scatter plots of performance of each model in the `models`
+directory wrt regression (mean and stddev guesses) and classification (accuracy, 
+f1, precall, precision). Performance is measured in terms of mean average error,
 mean average percentage error, and R^2 correlation coefficient. The images are
 saved in the `results` subdirectory.
 
