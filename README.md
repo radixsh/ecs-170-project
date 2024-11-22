@@ -5,7 +5,7 @@
 * Run `train_multiple.py` to train multiple models on the different
   HYPERPARAMETER values you set. The model weights will be saved into a new
   `models` subdirectory.
-* Then run `regression_performance.py` to measure the performance for guessing
+* Then run `performance.py` to measure the performance for guessing
   mean and standard deviation; the scatter-plots will be saved as pngs into the
   `results` subdirectory.
 
