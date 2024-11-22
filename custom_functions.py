@@ -28,17 +28,17 @@ def make_weights_filename(train_size, sample_size, num_dims):
 # returns a dict of the train size, sample size, and num_dims
 def parse_weights_filename(filename):
     # Define the regex pattern
-    pattern = r"weights_train_(\d+)_sample_(\d+)_dims_(\d+).pth"
+    pattern = r"(models/)?weights_train_(\d+)_sample_(\d+)_dims_(\d+).pth"
 
     # Match the pattern with the filename
     match = re.match(pattern, filename)
     if not match:
         raise ValueError(f"Filename {filename} does not match the expected "
-                         f"format. (Try removing `data` and `models` and "
+                         f"format. (Try removing `models` and "
                          f"trying again.)")
 
     # Extract the values and convert to appropriate types
-    train_size, sample_size, num_dims = match.groups()
+    _,train_size, sample_size, num_dims = match.groups()
     return {
         "TRAIN_SIZE": int(train_size),
         "SAMPLE_SIZE": int(sample_size),
@@ -64,7 +64,9 @@ def parse_data_filename(filename):
     # Match the pattern with the filename
     match = re.match(pattern, filename)
     if not match:
-        raise ValueError("Filename does not match the expected format.")
+        raise ValueError(f"Filename {filename} does not match the expected "
+                         f"format. (Try removing `data` and "
+                         f"trying again.)")
 
     # Extract the values and convert to appropriate types
     _, mode, length, sample_size, num_dims = match.groups()
@@ -232,8 +234,9 @@ class Distribution:
         # random val in (0, 1)
         elif self.support == 'I':
             sign = rng.choice([-1, 1])
-            open_interval = rng.uniform() * sign
-            return (open_interval + 1) / 2
+            random_in_open_interval = rng.uniform() * sign
+            random_in_open_interval = (random_in_open_interval + 1) / 2
+            return random_in_open_interval
 
     def generate_stddev(self):
         # Special behavior for some dists
@@ -242,9 +245,15 @@ class Distribution:
             return self.random_pos()
         # Beta's "mean" function is strange.
         elif self.name == 'Beta':
-            open_interval = self.generate_mean()
+
+            # Make a random value in (0,1)
+            sign = rng.choice([-1, 1])
+            random_in_open_interval = rng.uniform() * sign
+            random_in_open_interval = (random_in_open_interval + 1) / 2
+
+            # We want a random value in (0, mean - mean^2)
             upper_bound = (self.mean - (self.mean ** 2))
-            return open_interval * upper_bound
+            return random_in_open_interval * upper_bound
         # Rayleigh
         else:
             weird_constant = math.sqrt((4 / math.pi)  - 1)

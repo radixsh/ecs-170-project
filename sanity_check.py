@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from pprint import pformat
 
 from env import CONFIG, NUM_DIMENSIONS, DEVICE
-from generate_data import generate_data, DISTRIBUTIONS, MyDataset
+from generate_data import DISTRIBUTIONS, MyDataset
 from custom_functions import parse_weights_filename
 from build_model import build_model
 

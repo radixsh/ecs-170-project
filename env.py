@@ -1,5 +1,5 @@
 CONFIG = {
-        "TRAIN_SIZE": 100000,  # How many (data points, labels) examples to train on
+        "TRAIN_SIZE": 1000,  # How many (data points, labels) examples to train on
         "TEST_SIZE": 1000,       # To speed up regression_performance.py
         "SAMPLE_SIZE": 30,      # Size of input layer
         "BATCH_SIZE": 1,       # How many examples to see before performing backpropagation
@@ -8,7 +8,7 @@ CONFIG = {
         }
 
 HYPERPARAMETER = "TRAIN_SIZE"
-VALUES = [1e4,1e3,1e2]
+VALUES = [1e3,1e2]
 VALUES = [int(i) for i in VALUES]
 
 DEVICE = (
@@ -20,4 +20,4 @@ DEVICE = (
         "cpu"           # Fastest for small networks because moving stuff to GPU is slow
         )
 
-NUM_DIMENSIONS = 1          # How many dimensions of data we're currently working with
+NUM_DIMENSIONS = 2          # How many dimensions of data we're currently working with

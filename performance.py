@@ -263,6 +263,8 @@ def main():
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)
 
+    
+
     mean_maes = []
     stddev_maes = []
     mean_mapes = []
