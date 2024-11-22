@@ -197,16 +197,17 @@ class Distribution:
     def __init__(self, mean, stddev, support, name):
         self.name = name
         self.support = support
-        self.mean = mean if isinstance(mean, float) else self.generate_mean()
-        self.stddev = stddev if isinstance(stddev, float) else self.generate_stddev()
+        self.mean = mean if not isinstance(mean, str) \
+                else self.generate_mean()
+        self.stddev = stddev if not isinstance(stddev, str) \
+                else self.generate_stddev()
         self.onehot = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     def __str__(self):
-        string = f"self.name: {self.name}, "
-        string += f"self.support: {self.support}, "
-        string += f"self.function: {self.onehot}, "
-        string += f"self.mean: {self.mean}, "
-        string += f"self.stddev: {self.stddev}"
+        string = f"{self.name} (support: {self.support}), "
+        string += f"mean={self.mean:.3f}, "
+        string += f"stddev={self.stddev:.3f}, "
+        string += f"label={self.onehot}"
         return string
 
     def get_label(self):
@@ -341,7 +342,7 @@ class Rayleigh(Distribution):
         super().__init__(mean, stddev, support='R+', name='Rayleigh')
         self.onehot = [0, 0, 0, 0, 0, 0, 0, 1, 0]
         self.scale = self.mean * math.sqrt(2 / math.pi)
-        self.stddev = self.mean * math.sqrt((4 / math.pi)  - 1)
+        # self.stddev = self.scale * math.sqrt((4 / math.pi)  - 1)
 
     def rng(self, sample_size):
         return rng.rayleigh(self.scale, sample_size)

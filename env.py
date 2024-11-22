@@ -8,7 +8,7 @@ CONFIG = {
         }
 
 HYPERPARAMETER = "TRAIN_SIZE"
-VALUES = [1e1]#, 1e4, 1e5]
+VALUES = [1e3, 1e2, 1e1]#, 1e4, 1e5]
 VALUES = [int(i) for i in VALUES]
 
 DEVICE = (
@@ -20,4 +20,4 @@ DEVICE = (
         "cpu"           # Fastest for small networks because moving stuff to GPU is slow
         )
 
-NUM_DIMENSIONS = 2          # How many dimensions of data we're currently working with
+NUM_DIMENSIONS = 1          # How many dimensions of data we're currently working with

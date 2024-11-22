@@ -73,43 +73,49 @@ def main():
     model.load_state_dict(state_dict)
     logger.debug(f'Analyzing model from {weights_file}')
 
-    # Get a DataLoader with 9 entries: one per distribution family
+    # Generate a DataLoader with 9 entries: one per distribution family
     raw_data = generate_all9()
     samples = np.array([elem[0] for elem in raw_data])
     labels = np.array([elem[1] for elem in raw_data])
     dataset = MyDataset(samples, labels)
-    # Set batch_size=1 because we will iterate through the dataloader, one query
+    # Set batch_size=1 to allow us to iterate through the dataloader one query
     # at a time
     dataloader = DataLoader(dataset, batch_size=1)
 
     model.eval()
     guesses = []
     # Graph the sample points provided to the model on a scatter plot, and
-    # overlay both the model's guesses and the true distribution family, mean,
-    # and standard deviation
+    # overlay both the model's guess and the true distribution family
     with torch.no_grad():
         for points, labels in dataloader:
             points, labels = points.to(DEVICE).float(), labels.to(DEVICE).float()
 
-            # The first item is the only item because batch_size=1
+            # The first item in this batch is the only item because batch_size=1
             guesses = model(points)[0]
             points = points[0]
             labels = labels[0]
             fig, ax = plt.subplots()
             actual_color = 'royalblue'
-            ax.scatter(points, [0 for i in points], color=actual_color)
+
+            ax.scatter(points, [0 for i in points], color=actual_color, s=70,
+                       alpha=0.3)
+            logger.debug(f"\npoints: {points}")
 
             actual_dist = get_function(labels)
             actual_domain = get_domain(actual_dist.support)
+            actual_label = (f"actual: {actual_dist.name} "
+                            f"(mean={actual_dist.mean:.2f})")
             plt.plot(actual_domain, actual_dist.pdf(actual_domain),
-                     color=actual_color,
-                     label=f'actual: {actual_dist.name}')
+                     color=actual_color, label=actual_label)
+            logger.debug(f"actual: {actual_dist}")
 
             guess_dist = get_function(guesses)
             guess_domain = get_domain(guess_dist.support)
+            guess_label = (f"guess: {guess_dist.name} "
+                           f"(mean={actual_dist.mean:.2f})")
             plt.plot(actual_domain, guess_dist.pdf(actual_domain),
-                     color='orangered',
-                     label=f'guess: {guess_dist.name}')
+                     color='orangered', label=guess_label)
+            logger.debug(f"guess: {guess_dist}")
 
             plt.xlabel('Domain')
             plt.ylabel('Probability distribution functions')
