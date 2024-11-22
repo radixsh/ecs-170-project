@@ -99,6 +99,7 @@ def make_dataset(config, mode):
                             examples_count,
                             config['SAMPLE_SIZE'],
                             NUM_DIMENSIONS)
+    filename = os.path.join("data", filename)
 
     raw_data = generate_multidim_data(dimensions=NUM_DIMENSIONS,
                                       count=examples_count,
@@ -107,43 +108,40 @@ def make_dataset(config, mode):
     samples = np.array([elem[0] for elem in raw_data])
     labels = np.array([elem[1] for elem in raw_data])
     dataset = MyDataset(samples, labels)
-    file_path = os.path.join("data", filename)
-    torch.save(dataset, file_path)
+    
+    torch.save(dataset, filename)
 
     end = time.time()
     logger.info(f"Generated and saved {examples_count} examples out "
-                f"to {file_path} in {end - start:.2f} seconds "
+                f"to {filename} in {end - start:.2f} seconds "
                 f"(BATCH_SIZE={config['BATCH_SIZE']})")
 
     return dataset
 
 def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
-    good_file = None
+    good_filename = None
     # 'data' directory is already guaranteed to exist from call in main
     # iterate through 'data' directory and look for any good file
     # sorry for bad control flow, maybe should be a helper
-    for file in os.listdir('data'):
+    for filename in os.listdir('data'):
 
         # Catches weird stuff (like .DS_store)
-        try:
-            if file[:7] != 'dataset':
-                continue
-        except:
+        if 'dataset' not in filename:
             continue
 
         # Check the type, that there's enough data, 
         # the sample size is right, and that num_dimensions matches
-        file_info = parse_data_filename(file)
+        file_info = parse_data_filename(filename)
         if file_info['TYPE'] == mode \
             and file_info['SIZE'] >= config[f'{mode}_SIZE'] \
             and file_info['SAMPLE_SIZE'] == config['SAMPLE_SIZE'] \
             and file_info['NUM_DIMS'] == NUM_DIMENSIONS:
-                good_file = os.path.join("data", file)
+                good_filename = os.path.join("data", filename)
                 break
     
-    if good_file: 
-        logger.info(f"Loading data from {good_file}...")
-        dataset = torch.load(good_file)
+    if good_filename: 
+        logger.info(f"Loading data from {good_filename}...")
+        dataset = torch.load(good_filename)
     else: # If no valid data is found, then generate some new data
         logger.info(f'No valid data found, generating fresh data...')
         dataset = make_dataset(config, mode)
