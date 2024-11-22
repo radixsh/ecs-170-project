@@ -19,6 +19,7 @@ logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
+# For measuring our model's regression performance
 def get_mae_mape_r2(model, desired):
     if desired == "mean":
         index = -2
@@ -29,8 +30,8 @@ def get_mae_mape_r2(model, desired):
                        f"do you want mean or stddev?")
         return
 
-    test_dataloader = get_dataloader(CONFIG, 'data/test_dataset',
-                                     required_size=CONFIG['TEST_SIZE'])
+    test_dataloader = get_dataloader(CONFIG, 'data/train_dataset',
+                                     examples_count=CONFIG['TRAINING_SIZE'])
     model.eval()
     actuals = []
     guesses = []
@@ -55,9 +56,9 @@ def get_mae_mape_r2(model, desired):
             mean_absolute_percentage_error(actuals, guesses),
             r2_score(actuals, guesses))
 
-# My test (W.I.P) for measuring clssification.
+# For measuring our model's classification performance
 def get_classification_metrics(model):
-    test_dataloader = get_dataloader(CONFIG, 'data/test_dataset', required_size=CONFIG['TEST_SIZE'])
+    test_dataloader = get_dataloader(CONFIG, 'data/train_dataset', examples_count=CONFIG['TRAINING_SIZE'])
     model.eval()
     
     true_labels = []
