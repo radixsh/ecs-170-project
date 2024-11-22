@@ -11,8 +11,8 @@ from torch.utils.data import DataLoader
 
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE
 from build_model import build_model
-from pipeline import get_dataloader
-from distributions import DISTRIBUTION_FUNCTIONS
+from train_multiple import get_dataloader
+from generate_data import DISTRIBUTION_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
