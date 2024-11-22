@@ -221,7 +221,7 @@ class Distribution:
     # Returns a random positive real according to the lognormal distribution
     # with mean and stddev 1. Useful for generating stddevs and positive means.
     def random_pos(self):
-        return rng.lognormal(mean = -math.log(2) / math.sqrt(2), sigma=math.sqrt(math.log(2)))
+        return rng.lognormal(mean=-math.log(2) / 2, sigma=math.sqrt(math.log(2)))
 
     def generate_mean(self):
         # Support is all of R
@@ -243,7 +243,6 @@ class Distribution:
         # Default case
         if self.name not in ['Beta', 'Rayleigh']:
             return self.random_pos()
-        # Beta's "mean" function is strange.
         elif self.name == 'Beta':
 
             # Make a random value in (0,1)
@@ -252,8 +251,9 @@ class Distribution:
             random_in_open_interval = (random_in_open_interval + 1) / 2
 
             # We want a random value in (0, mean - mean^2)
-            upper_bound = (self.mean - (self.mean ** 2))
+            upper_bound = math.sqrt(self.mean * (1 - self.mean))
             return random_in_open_interval * upper_bound
+        
         # Rayleigh
         else:
             weird_constant = math.sqrt((4 / math.pi)  - 1)
@@ -264,13 +264,16 @@ class Beta(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support='I', name='Beta')
         self.onehot = [1, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.alpha = math.sqrt((((self.mean ** 2) - (self.mean ** 3)) / self.stddev) - self.mean)
-        self.beta = (self.alpha / self.mean) - self.alpha
+        nonsense_constant = (self.mean * (1 - self.mean) / (self.stddev ** 2)) - 1
+        #nonsense_constant = ((self.mean * (1 - self.mean)) - (self.stddev ** 2)) / (self.stddev ** 2)
+        self.alpha = self.mean * nonsense_constant
+        self.beta = (1 - self.mean) * nonsense_constant
 
     def rng(self, sample_size):
         return rng.beta(self.alpha, self.beta, sample_size)
 
     def pdf(self, x):
+        print(self.mean)
         return sps.beta.pdf(x, self.alpha, self.beta)
 
 class Gamma(Distribution):
