@@ -56,13 +56,15 @@ def get_mae_mape_r2(model, desired):
             mean_absolute_percentage_error(actuals, guesses),
             r2_score(actuals, guesses))
 
+
+'''TODO: Figure out how to get input arrays and properly evaluate metrics. '''
 # For measuring our model's classification performance
 def get_classification_metrics(model):
     test_dataloader = get_dataloader(CONFIG, 'data/train_dataset', examples_count=CONFIG['TRAINING_SIZE'])
     model.eval()
     
-    true_labels = []
-    predicted_labels = []
+    actuals = []
+    guesses = []
     
     with torch.no_grad():
         for X, y in test_dataloader:
@@ -70,20 +72,20 @@ def get_classification_metrics(model):
 
             # true class - converts the one-hot encoding part into class indices
             true_class = torch.argmax(y[0, :-2], dim=-1)  # Assumes the last 2 columns are "mean" and "stddevs"
-            true_labels.append(true_class.cpu().numpy())
-
-            # Same with predictions
+            actuals.append(actuals)
+            
             pred = model(X)
-            predicted_class = torch.argmax(pred[0, :-2], dim=-1)
-            predicted_labels.append(predicted_class.cpu().numpy())
+            
+            predicted_value = None; # TODO: Correctly Set predicted_value
+            guesses.append(predicted_value)
 
     # Flatten lists
-    true_labels = np.concatenate(true_labels)
-    predicted_labels = np.concatenate(predicted_labels)
+    actuals = np.concatenate(actuals)
+    guesses = np.concatenate(guesses)
     
     # Compute classification metrics
-    precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predicted_labels, average='weighted')
-    accuracy = accuracy_score(true_labels, predicted_labels)
+    precision, recall, f1, _ = precision_recall_fscore_support(actuals, guesses, average='weighted')
+    accuracy = accuracy_score(actuals, guesses)
 
     logger.info(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1-score: {f1:.4f}, Accuracy: {accuracy:.4f}")
     return precision, recall, f1, accuracy
