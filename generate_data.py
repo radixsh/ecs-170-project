@@ -62,7 +62,7 @@ def generate_multidim_data(dimensions, count, sample_size):
 
             # dist_class = np.random.choice(DISTRIBUTIONS.items())
             dist_class = DISTRIBUTIONS[dist_name]
-            # Instantiate the class!!! 
+            # Instantiate the class!!!
             dist_object = dist_class()
 
             dist_points = dist_object.rng(sample_size)
@@ -96,11 +96,11 @@ def get_good_filename(config,mode):
         if 'dataset' not in filename:
             continue
 
-        # Check the type, that there's enough data, 
+        # Check the type, that there's enough data,
         # the sample size is right, and that num_dimensions matches
         file_info = parse_data_filename(filename)
-        if file_info['TYPE'] == mode \
-            and file_info['SIZE'] >= config[f'{mode}_SIZE'] \
+        if file_info['MODE'] == mode \
+            and file_info['LENGTH'] >= config[f'{mode}_SIZE'] \
             and file_info['SAMPLE_SIZE'] == config['SAMPLE_SIZE'] \
             and file_info['NUM_DIMS'] == NUM_DIMENSIONS:
                 good_filename = os.path.join("data", filename)
@@ -108,56 +108,53 @@ def get_good_filename(config,mode):
     return None
 
 def make_dataset(config, mode):
-
     # Check for a preexisting good file
     good_filename = get_good_filename(config,mode)
-    
+
     if good_filename:
         logger.info(f"Sufficient data already exists at {good_filename}!")
         dataset = torch.load(good_filename)
-    
-    else:
-        start = time.time()
+        return dataset
 
-        # Get the correct size
-        examples_count = config[f'{mode}_SIZE']
+    start = time.time()
 
-        filename = make_data_filename(mode,
-                                examples_count,
-                                config['SAMPLE_SIZE'],
-                                NUM_DIMENSIONS)
+    # Get the correct size
+    examples_count = config[f'{mode}_SIZE']
 
-        raw_data = generate_multidim_data(dimensions=NUM_DIMENSIONS,
-                                        count=examples_count,
-                                        sample_size=config['SAMPLE_SIZE'])
+    filename = make_data_filename(mode,
+                                  examples_count,
+                                  config['SAMPLE_SIZE'],
+                                  NUM_DIMENSIONS)
 
-        samples = np.array([elem[0] for elem in raw_data])
-        labels = np.array([elem[1] for elem in raw_data])
-        dataset = MyDataset(samples, labels)
-        
-        torch.save(dataset, filename)
+    raw_data = generate_multidim_data(dimensions=NUM_DIMENSIONS,
+                                      count=examples_count,
+                                      sample_size=config['SAMPLE_SIZE'])
 
-        end = time.time()
-        logger.info(f"Generated and saved {examples_count} examples out "
-                    f"to {filename} in {end - start:.2f} seconds.")
+    samples = np.array([elem[0] for elem in raw_data])
+    labels = np.array([elem[1] for elem in raw_data])
+    dataset = MyDataset(samples, labels)
 
+    torch.save(dataset, filename)
+
+    end = time.time()
+    logger.info(f"Generated and saved {examples_count} examples out to "
+                f"{filename} in {end - start:.2f} seconds.")
     return dataset
 
 def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
-   
     good_filename = get_good_filename(config,mode)
-    
-    if good_filename: 
-        logger.info(f"Loading data from {good_filename}...")
+
+    if good_filename:
+        logger.info(f"Using data from {good_filename}")
         dataset = torch.load(good_filename)
-        if parse_data_filename(good_filename)['SIZE'] != config[f'{mode}_SIZE']:
+        if parse_data_filename(good_filename)['LENGTH'] != config[f'{mode}_SIZE']:
             logger.debug(f"Taking the first {config[f'{mode}_SIZE']} entries")
             dataset = Subset(dataset, indices=range(config[f'{mode}_SIZE']))
 
-    else: # If no valid data is found, then generate some new data
+    else:
         logger.info(f'No valid data found, generating fresh data...')
         dataset = make_dataset(config, mode)
-    
+
     if mode == 'TRAIN':
         dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
     elif mode == 'TEST': # batch size should just be 1 for testing.

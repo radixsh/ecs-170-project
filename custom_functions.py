@@ -33,7 +33,9 @@ def parse_weights_filename(filename):
     # Match the pattern with the filename
     match = re.match(pattern, filename)
     if not match:
-        raise ValueError("Filename does not match the expected format.")
+        raise ValueError(f"Filename {filename} does not match the expected "
+                         f"format. (Try removing `data` and `models` and "
+                         f"trying again.)")
 
     # Extract the values and convert to appropriate types
     train_size, sample_size, num_dims = match.groups()
@@ -46,10 +48,10 @@ def parse_weights_filename(filename):
 # Formats the filename for a dataset
 # Format: "dataset_$TYPE$_len_$TRAIN/TEST_SIZE$_sample_$SAMPLE_SIZE$_dims_$NUM_DIMS$"
 # Example: "dataset_train_len_1000_sample_30_dims_2"
-def make_data_filename(type, len, sample_size, num_dims):
+def make_data_filename(mode, length, sample_size, num_dims):
     return (f"data/"
-            f"dataset_{type}_"
-            f"len_{len}_"
+            f"dataset_{mode}_"
+            f"len_{length}_"
             f"sample_{sample_size}_"
             f"dims_{num_dims}")
 
@@ -65,10 +67,10 @@ def parse_data_filename(filename):
         raise ValueError("Filename does not match the expected format.")
 
     # Extract the values and convert to appropriate types
-    _, type, size, sample_size, num_dims = match.groups()
+    _, mode, length, sample_size, num_dims = match.groups()
     return {
-        "TYPE": type,
-        "SIZE": int(size),
+        "MODE": mode,
+        "LENGTH": int(length),
         "SAMPLE_SIZE": int(sample_size),
         "NUM_DIMS": int(num_dims)
     }

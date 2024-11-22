@@ -54,7 +54,7 @@ def pipeline(model, config):
     # Loss function can't be in config dict because custom_loss_function.py
     # depends on config dict to build the loss function
     loss_function = CustomLoss()
-    
+
     train_dataloader = get_dataloader(config, 'TRAIN')
 
     logger.info(f"Training with {HYPERPARAMETER} = "
@@ -80,12 +80,10 @@ def main():
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)
 
-    
-
     # Train one model per training_size
     for i, value in enumerate(VALUES):
         # Update TRAINING_SIZE in the dict from env.py
-        CONFIG[HYPERPARAMETER] = value 
+        CONFIG[HYPERPARAMETER] = value
 
         # Filenames for various models
         dest_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
@@ -100,13 +98,13 @@ def main():
         num_trainable_params = sum(param.numel() for param in model.parameters())
 
         # Train the model anew, and save the resulting model's weights out
-        logger.info(f"Training model with hyperparameters:\n"
-                     f"TRAIN_SIZE = {CONFIG['TRAIN_SIZE']}\n"
-                     f"SAMPLE_SIZE = {CONFIG['SAMPLE_SIZE']}\n"
-                     f"BATCH_SIZE = {CONFIG['BATCH_SIZE']}\n"
-                     f"EPOCHS = {CONFIG['EPOCHS']}\n"
-                     f"NUM_DIMENSIONS = {NUM_DIMENSIONS}\n"
-                     f"Variable hyperparameter is {HYPERPARAMETER}.\n"
+        logger.info(f"Training a new {NUM_DIMENSIONS}-dimensional model "
+                    f"with these hyperparameters:\n"
+                     f"\tTRAIN_SIZE = {CONFIG['TRAIN_SIZE']}\n"
+                     f"\tSAMPLE_SIZE = {CONFIG['SAMPLE_SIZE']}\n"
+                     f"\tBATCH_SIZE = {CONFIG['BATCH_SIZE']}\n"
+                     f"\tEPOCHS = {CONFIG['EPOCHS']}\n"
+                     f"Variable hyperparameter is {HYPERPARAMETER}. "
                      f"Model has {num_trainable_params} trainable parameters.")
         train_start = time.time()
 
@@ -120,7 +118,8 @@ def main():
                      f"(finished in {train_end - train_start:.2f} seconds)")
 
     end = time.time()
-    #logger.info(f"Finished training {dests} models in {end - start:.2f} seconds")
+    logger.info(f"Finished training {len(VALUES)} models in "
+                f"{end - start:.2f} seconds")
 
 if __name__ == "__main__":
     main()
