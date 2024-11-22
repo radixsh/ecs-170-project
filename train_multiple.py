@@ -91,7 +91,6 @@ def main():
         dest_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
                                               CONFIG['SAMPLE_SIZE'],
                                               NUM_DIMENSIONS)
-        dest_filename = os.path.join("models", dest_filename)
 
         # Initialize a new neural net
         input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS

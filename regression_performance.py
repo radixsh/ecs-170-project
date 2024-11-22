@@ -132,7 +132,6 @@ def main():
         model_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
                                               CONFIG['SAMPLE_SIZE'],
                                               NUM_DIMENSIONS)
-        model_filename = os.path.join("models", model_filename)
         
         logger.info(f'Analyzing model at {model_filename}...')
 

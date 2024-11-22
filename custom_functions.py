@@ -18,7 +18,8 @@ logger.addHandler(console_handler)
 # Format: "weights_train_$TRAIN_SIZE$_sample_$SAMPLE_SIZE$_dims_$NUM_DIMS$"
 # Example: "weights_train_1000_sample_30_dims_2"
 def make_weights_filename(train_size, sample_size, num_dims):
-    return (f"weights_train_{train_size}_"
+    return (f"models/"
+            f"weights_train_{train_size}_"
             f"sample_{sample_size}_"
             f"dims_{num_dims}"
             f".pth")
@@ -46,7 +47,8 @@ def parse_weights_filename(filename):
 # Format: "dataset_$TYPE$_len_$TRAIN/TEST_SIZE$_sample_$SAMPLE_SIZE$_dims_$NUM_DIMS$"
 # Example: "dataset_train_len_1000_sample_30_dims_2"
 def make_data_filename(type, len, sample_size, num_dims):
-    return (f"dataset_{type}_"
+    return (f"data/"
+            f"dataset_{type}_"
             f"len_{len}_"
             f"sample_{sample_size}_"
             f"dims_{num_dims}")

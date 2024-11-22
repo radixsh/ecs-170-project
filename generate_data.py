@@ -89,40 +89,7 @@ def generate_multidim_data(dimensions, count, sample_size):
 
     return data
 
-def make_dataset(config, mode):
-    start = time.time()
-
-    # Get the correct size
-    examples_count = config[f'{mode}_SIZE']
-
-    filename = make_data_filename(mode,
-                            examples_count,
-                            config['SAMPLE_SIZE'],
-                            NUM_DIMENSIONS)
-    filename = os.path.join("data", filename)
-
-    raw_data = generate_multidim_data(dimensions=NUM_DIMENSIONS,
-                                      count=examples_count,
-                                      sample_size=config['SAMPLE_SIZE'])
-
-    samples = np.array([elem[0] for elem in raw_data])
-    labels = np.array([elem[1] for elem in raw_data])
-    dataset = MyDataset(samples, labels)
-    
-    torch.save(dataset, filename)
-
-    end = time.time()
-    logger.info(f"Generated and saved {examples_count} examples out "
-                f"to {filename} in {end - start:.2f} seconds "
-                f"(BATCH_SIZE={config['BATCH_SIZE']})")
-
-    return dataset
-
-def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
-    good_filename = None
-    # 'data' directory is already guaranteed to exist from call in main
-    # iterate through 'data' directory and look for any good file
-    # sorry for bad control flow, maybe should be a helper
+def get_good_filename(config,mode):
     for filename in os.listdir('data'):
 
         # Catches weird stuff (like .DS_store)
@@ -137,7 +104,49 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
             and file_info['SAMPLE_SIZE'] == config['SAMPLE_SIZE'] \
             and file_info['NUM_DIMS'] == NUM_DIMENSIONS:
                 good_filename = os.path.join("data", filename)
-                break
+                return good_filename
+    return None
+
+def make_dataset(config, mode):
+
+    # Check for a preexisting good file
+    good_filename = get_good_filename(config,mode)
+    
+    if good_filename:
+        logger.info(f"Sufficient data already exists at {good_filename}!")
+        dataset = torch.load(good_filename)
+    
+    else:
+        start = time.time()
+
+        # Get the correct size
+        examples_count = config[f'{mode}_SIZE']
+
+        filename = make_data_filename(mode,
+                                examples_count,
+                                config['SAMPLE_SIZE'],
+                                NUM_DIMENSIONS)
+
+        raw_data = generate_multidim_data(dimensions=NUM_DIMENSIONS,
+                                        count=examples_count,
+                                        sample_size=config['SAMPLE_SIZE'])
+
+        samples = np.array([elem[0] for elem in raw_data])
+        labels = np.array([elem[1] for elem in raw_data])
+        dataset = MyDataset(samples, labels)
+        
+        torch.save(dataset, filename)
+
+        end = time.time()
+        logger.info(f"Generated and saved {examples_count} examples out "
+                    f"to {filename} in {end - start:.2f} seconds "
+                    f"(BATCH_SIZE={config['BATCH_SIZE']})")
+
+    return dataset
+
+def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
+   
+    good_filename = get_good_filename(config,mode)
     
     if good_filename: 
         logger.info(f"Loading data from {good_filename}...")
