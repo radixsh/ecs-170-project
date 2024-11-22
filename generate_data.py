@@ -99,7 +99,7 @@ def rayleigh(sample_size):
     # mean = sigma sqrt(pi/2)
     # sigma = mean * sqrt(2/pi)
     sigma = mean * math.sqrt(2 / math.pi)
-    stddev = mean * math.sqrt((4 / math.pi)  - 1)
+    stddev = sigma * math.sqrt((4 / math.pi)  - 1)
     labels = [0,0,0,0,0,0,0,1,0,mean,stddev]
 
     # One parameter, which must be positive

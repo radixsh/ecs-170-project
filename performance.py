@@ -20,6 +20,11 @@ logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
+distribution_indices = list(DISTRIBUTION_FUNCTIONS.keys())
+
+colors = ["royalblue", "tomato", "forestgreen", "darkorange",
+        "purple", "cyan", "magenta", "yellow", "black"]
+
 # Regression: Graph how loss, R^2, and MAE varies with different sample sizes,
 # training sizes, epoch counts, and/or learning rate
 
@@ -99,11 +104,11 @@ def get_classification_metrics(model):
     # Ensure compatibility with sklearn (convert to NumPy)
     return (accuracy_score(actual_labels.cpu().numpy(), predictions.cpu().numpy()),
         f1_score(actual_labels.cpu().numpy(), predictions.cpu().numpy(),
-            average='weighted'),
+            average=None),
         recall_score(actual_labels.cpu().numpy(),
-            predictions.cpu().numpy(), average='weighted'),
+            predictions.cpu().numpy(), average=None),
         precision_score(actual_labels.cpu().numpy(),
-            predictions.cpu().numpy(), average='weighted'))
+            predictions.cpu().numpy(), average=None))
 
 # regression pngs
 def regression_png(name, x_values, means, stddevs):
@@ -139,20 +144,30 @@ def regression_png(name, x_values, means, stddevs):
     plt.savefig(destination, bbox_inches="tight")
     plt.show()
 
-def classification_png(name, x_values, accuracies):
-    plt.ylim(min(accuracies) * 0.9, max(accuracies) * 1.1)
+def classification_png(name, x_values, metrics):
+    plt.ylim(0, 1)
     plt.ylabel(name)
 
     x_values = np.float64(x_values)
     sorted_indices = np.argsort(x_values)
     x_values = x_values[sorted_indices]
-    accuracies = np.array(accuracies)[sorted_indices]
 
-    plt.scatter(x_values, accuracies, color="royalblue", label="Accuracies")
-    slope, intercept = np.polyfit(x_values, accuracies, deg=1)
-    trend = slope * x_values + intercept
-    plt.plot(x_values, trend, color="royalblue",
-             label=f'Slope: {slope}')
+
+    # Handle overall accuracy differently
+    if name == "Accuracy":
+        metrics = np.array(metrics)[sorted_indices]  # Sort 1D metrics array
+        plt.scatter(x_values, metrics, color="royalblue", label="Accuracy")
+        slope, intercept = np.polyfit(x_values, metrics, deg=1)
+        trend = slope * x_values + intercept
+        plt.plot(x_values, trend, color="royalblue", label=f"Slope: {slope:.2f}")
+    else:
+        # Sort 2D metrics array for other metrics (e.g., F1, Recall, Precision)
+        metrics = np.array(metrics)[sorted_indices, :]
+        for i in range(metrics.shape[1]):  # Loop over distributions (columns)
+            plt.scatter(x_values, metrics[:, i], color=colors[i], label=distribution_indices[i])
+            slope, intercept = np.polyfit(x_values, metrics[:, i], deg=1)
+            trend = slope * x_values + intercept
+            plt.plot(x_values, trend, color=colors[i])
 
     plt.gca().set_xscale('log')
     plt.xlabel(HYPERPARAMETER)
@@ -241,7 +256,7 @@ def main():
                     f"mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
                     f"\n\t\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
                     f"\n\t\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "
-                    f"\n\t\t\t--> accuracy={accuracy:.2f},\tf1={f1:.2f},\trecall={recall:.2f},\tprecision={precision:.2f}"
+                    f"\n\t\t\t--> accuracy={accuracy:.2f},\tf1={f1},\trecall={recall},\tprecision={precision}"
                     f"(Finished in {model_end - model_start:.2f} seconds)")
 
     end = time.time()

@@ -1,5 +1,5 @@
 CONFIG = {
-        "TRAINING_SIZE": 1000,  # How many (data points, labels) examples to train on
+        "TRAINING_SIZE": 10000,  # How many (data points, labels) examples to train on
         "TEST_SIZE": 100,       # To speed up regression_performance.py
         "SAMPLE_SIZE": 30,      # Size of input layer
         "BATCH_SIZE": 1,       # How many examples to see before performing backpropagation
