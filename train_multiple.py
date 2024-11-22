@@ -97,6 +97,8 @@ def main():
         output_size = (len(DISTRIBUTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
 
+        num_trainable_params = sum(param.numel() for param in model.parameters())
+
         # Train the model anew, and save the resulting model's weights out
         logger.info(f"Training model with hyperparameters:\n"
                      f"TRAIN_SIZE = {CONFIG['TRAIN_SIZE']}\n"
@@ -104,7 +106,8 @@ def main():
                      f"BATCH_SIZE = {CONFIG['BATCH_SIZE']}\n"
                      f"EPOCHS = {CONFIG['EPOCHS']}\n"
                      f"NUM_DIMENSIONS = {NUM_DIMENSIONS}\n"
-                     f"Variable hyperparameter is {HYPERPARAMETER}")
+                     f"Variable hyperparameter is {HYPERPARAMETER}.\n"
+                     f"Model has {num_trainable_params} trainable parameters.")
         train_start = time.time()
 
         model_weights = pipeline(model, CONFIG)

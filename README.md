@@ -5,7 +5,7 @@
 * Run `train_multiple.py` to train multiple models on the different
   HYPERPARAMETER values you set. The model weights will be saved into a new
   `models` subdirectory.
-* Then run `regression_performance.py` to measure the performance for guessing
+* Then run `performance.py` to measure the performance for guessing
   mean and standard deviation; the scatter-plots will be saved as pngs into the
   `results` subdirectory.
 
@@ -48,10 +48,10 @@ directory has 1000 training examples, but our current TRAINING_SIZE value is
 suitable dataset in the `data` directory that is big enough (and has matching
 dimensionality and SAMPLE_SIZE), then this script will generate new data.
 
-### `regression_performance.py`
-Creates scatter plots of regression performance of each model in the `models`
-directory wrt mean and stddev guesses (hence "regression" performance only, no
-classification yet). Performance is measured in terms of mean average error,
+### `performance.py`
+Creates scatter plots of performance of each model in the `models`
+directory wrt regression (mean and stddev guesses) and classification (accuracy, 
+f1, precall, precision). Performance is measured in terms of mean average error,
 mean average percentage error, and R^2 correlation coefficient. The images are
 saved in the `results` subdirectory.
 

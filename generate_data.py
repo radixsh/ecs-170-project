@@ -139,8 +139,7 @@ def make_dataset(config, mode):
 
         end = time.time()
         logger.info(f"Generated and saved {examples_count} examples out "
-                    f"to {filename} in {end - start:.2f} seconds "
-                    f"(BATCH_SIZE={config['BATCH_SIZE']})")
+                    f"to {filename} in {end - start:.2f} seconds.")
 
     return dataset
 
@@ -152,7 +151,7 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
         logger.info(f"Loading data from {good_filename}...")
         dataset = torch.load(good_filename)
         if parse_data_filename(good_filename)['SIZE'] != config[f'{mode}_SIZE']:
-            logger.debug(f'Taking the first {config[f'{mode}_SIZE']} entries')
+            logger.debug(f"Taking the first {config[f'{mode}_SIZE']} entries")
             dataset = Subset(dataset, indices=range(config[f'{mode}_SIZE']))
 
     else: # If no valid data is found, then generate some new data

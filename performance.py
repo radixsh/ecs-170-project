@@ -6,7 +6,7 @@ import time
 import torch
 import os
 import re
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, accuracy_score, f1_score, recall_score, precision_score
 from torch.utils.data import DataLoader
 
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE, VALUES
@@ -15,10 +15,25 @@ from train_multiple import get_dataloader
 from custom_functions import DISTRIBUTIONS, make_weights_filename, get_indices
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
+distribution_indices = list(DISTRIBUTIONS.keys())
+
+colors = ["royalblue", "tomato", "forestgreen", "darkorange",
+        "purple", "cyan", "magenta", "yellow", "black"]
+
+# Regression: Graph how loss, R^2, and MAE varies with different sample sizes,
+# training sizes, epoch counts, and/or learning rate
+
+# Classification: Graph how accuracy, precision, recall, and F1 score
+# varies with different sample sizes, training sizes, epoch counts, and/or
+# learning rate
+# - there's overall accuracy, and then there's accuracy per class
+# - f1, precision, recall are only per class
+
+# regression performance
 def test_model(model):
 
     test_dataloader = get_dataloader(CONFIG,mode='TEST')
@@ -36,27 +51,53 @@ def test_model(model):
             # Call the model
             pred = model(X)
 
-            # Indices for means and stddevs
-            mean_idxs = get_indices(mean=True, dims = range(1,NUM_DIMENSIONS+1))
-            stddev_idxs = get_indices(stddev=True, dims = range(1,NUM_DIMENSIONS+1))
+            # Curr_ refers to current data point
+            curr_actual_means = []
+            curr_actual_stddevs = []
+            curr_predicted_means = []
+            curr_predicted_stddevs = []
 
-            # Grab appropriate values
-            curr_actual_means = y[0][mean_idxs]
-            curr_actual_stddevs = y[0][stddev_idxs]
-            curr_predicted_means = pred[0][mean_idxs]
-            curr_predicted_stddevs = pred[0][stddev_idxs]
+            # Go through each dimension
+            for dim in range(1, NUM_DIMENSIONS+1):
+                dim_mean_idxs = get_indices(mean=True, dims = [dim])
+                dim_stddev_idxs = get_indices(stddev=True, dims = [dim])
 
-            # Need to transpose them for processing!
-            curr_actual_means = curr_actual_means.unsqueeze(1)
-            curr_actual_stddevs = curr_actual_stddevs.unsqueeze(1)
-            curr_predicted_means = curr_predicted_means.unsqueeze(1)
-            curr_predicted_stddevs = curr_predicted_stddevs.unsqueeze(1)
+                # Get the specified values; dim_ refers to current dimensions
+                dim_actual_means = y[0][dim_mean_idxs]
+                dim_actual_stddevs = y[0][dim_stddev_idxs]
+                dim_predicted_means = pred[0][dim_mean_idxs]
+                dim_predicted_stddevs = pred[0][dim_stddev_idxs]
 
-            # Store them for processing
+                curr_actual_means.append(dim_actual_means)
+                curr_actual_stddevs.append(dim_actual_stddevs)
+                curr_predicted_means.append(dim_predicted_means)
+                curr_predicted_stddevs.append(dim_predicted_stddevs)
+
+            # After looping through dims, our curr_actual_stuff looks like
+            # [dim1_stuff, dim2_stuff, ...]
+            # Store them for further processing
             actual_means.append(curr_actual_means)
             actual_stddevs.append(curr_actual_stddevs)
             predicted_means.append(curr_predicted_means)
             predicted_stddevs.append(curr_predicted_stddevs)
+
+    # actual_stuff now looks like:
+    # [[x1_dim1_stuff, x1_dim2_stuff, ...],
+    #  [x2_dim2_stuff, x2_dim2_stuff, ...],
+    #  ...]
+    # We want something for the form:
+    # [[x1_dim1_stuff, x2_dim1_stuff, ...],
+    #  [x1_dim2_stuff, x2_dim2_stuff, ...],
+    #  ...]
+    # ChatGPT is cracked at pytorch
+    actual_means = torch.tensor(actual_means)
+    actual_stddevs = torch.tensor(actual_stddevs)
+    predicted_means = torch.tensor(predicted_means)
+    predicted_stddevs = torch.tensor(predicted_stddevs)
+    actual_means = actual_means.transpose(0, 1)
+    actual_stddevs = actual_stddevs.transpose(0, 1)
+    predicted_means = predicted_means.transpose(0, 1)
+    predicted_stddevs = predicted_stddevs.transpose(0, 1)
 
     mean_maes = []
     mean_mapes = []
@@ -105,7 +146,46 @@ def test_model(model):
 
     return out
 
-def create_png(name, x_values, means, stddevs):
+def get_classification_metrics(model):
+    index = get_indices(dists=True)
+    test_dataloader = get_dataloader(CONFIG, mode='TEST')
+    model.eval()
+    actuals = []
+    guesses = []
+    with torch.no_grad():
+        for X, y in test_dataloader:
+            X, y = X.to(DEVICE).float(), y.to(DEVICE).float()
+            
+            # Extract actual distribution
+            actual_dist = y[0][index]
+            actuals.append(actual_dist)
+
+            # Get predicted distribution
+            pred = model(X)
+            predicted_dist = pred[0][index]
+            guesses.append(predicted_dist)
+
+            #print(f'Actual: {actual_dist}, Predicted: {predicted_dist}')
+
+    # Convert lists of tensors to a single tensor
+    actuals = torch.stack(actuals)
+    guesses = torch.stack(guesses)
+
+    # Convert distributions to class labels
+    actual_labels = torch.argmax(actuals, dim=-1)
+    predictions = torch.argmax(guesses, dim=-1)
+
+    # Ensure compatibility with sklearn (convert to NumPy)
+    return (accuracy_score(actual_labels.cpu().numpy(), predictions.cpu().numpy()),
+        f1_score(actual_labels.cpu().numpy(), predictions.cpu().numpy(),
+            average=None),
+        recall_score(actual_labels.cpu().numpy(),
+            predictions.cpu().numpy(), average=None),
+        precision_score(actual_labels.cpu().numpy(),
+            predictions.cpu().numpy(), average=None))
+
+# regression pngs
+def regression_png(name, x_values, means, stddevs):
     both = means + stddevs + [0]
     plt.ylim(min(both) * 1.1, max(both) * 1.1)
     plt.ylabel(name)
@@ -138,8 +218,40 @@ def create_png(name, x_values, means, stddevs):
     plt.savefig(destination, bbox_inches="tight")
     plt.show()
 
-# Goal: Graph how loss, R^2, and MAE varies with different sample sizes,
-# training sizes, epoch counts, and/or learning rate
+def classification_png(name, x_values, metrics):
+    plt.ylim(0, 1)
+    plt.ylabel(name)
+
+    x_values = np.float64(x_values)
+    sorted_indices = np.argsort(x_values)
+    x_values = x_values[sorted_indices]
+
+
+    # Handle overall accuracy differently
+    if name == "Accuracy":
+        metrics = np.array(metrics)[sorted_indices]  # Sort 1D metrics array
+        plt.scatter(x_values, metrics, color="royalblue", label="Accuracy")
+        slope, intercept = np.polyfit(x_values, metrics, deg=1)
+        trend = slope * x_values + intercept
+        plt.plot(x_values, trend, color="royalblue", label=f"Slope: {slope:.2f}")
+    else:
+        # Sort 2D metrics array for other metrics (e.g., F1, Recall, Precision)
+        metrics = np.array(metrics)[sorted_indices, :]
+        for i in range(metrics.shape[1]):  # Loop over distributions (columns)
+            plt.scatter(x_values, metrics[:, i], color=colors[i], label=distribution_indices[i])
+            slope, intercept = np.polyfit(x_values, metrics[:, i], deg=1)
+            trend = slope * x_values + intercept
+            plt.plot(x_values, trend, color=colors[i])
+
+    plt.gca().set_xscale('log')
+    plt.xlabel(HYPERPARAMETER)
+
+    plt.title(name)
+    plt.legend(bbox_to_anchor=(1,1), loc="upper left")
+    destination = f"results/{HYPERPARAMETER.lower()}_{name.replace(' ', '_')}.png"
+    plt.savefig(destination, bbox_inches="tight")
+    plt.show()
+
 def main():
     start = time.time()
 
@@ -158,6 +270,10 @@ def main():
     mean_r2_scores = []
     stddev_r2_scores = []
     hyperparams = []       # For matplotlib graphs
+    accuracies = []
+    f1s = []
+    recalls = []
+    precisions = []
     count = 0
 
     for hyperparam_val in VALUES:
@@ -207,6 +323,12 @@ def main():
         stddev_mapes.append(stddev_mape)
         stddev_r2_scores.append(stddev_r2_score)
 
+        accuracy, f1, recall, precision = get_classification_metrics(model)
+        accuracies.append(accuracy)
+        f1s.append(f1)
+        recalls.append(recall)
+        precisions.append(precision)
+
         model_end = time.time()
         logger.info(f"{HYPERPARAMETER}={hyperparam_val}"
                     f"\n\t\t--> mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
@@ -219,12 +341,16 @@ def main():
     if count == 0:
         return
 
-    create_png("MAE (mean average error)",
+    regression_png("MAE (mean average error)",
                hyperparams, mean_maes, stddev_maes)
-    create_png("MAPE (mean average percentage error)",
+    regression_png("MAPE (mean average percentage error)",
                hyperparams, mean_mapes, stddev_mapes)
-    create_png("R^2 (correlation coefficient)",
+    regression_png("R^2 (correlation coefficient)",
                hyperparams, mean_r2_scores, stddev_r2_scores)
+    classification_png("Accuracy", hyperparams, accuracies)
+    classification_png("F1", hyperparams, f1s)
+    classification_png("Recall", hyperparams, recalls)
+    classification_png("Precision", hyperparams, precisions)
 
 if __name__ == "__main__":
     main()

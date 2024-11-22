@@ -105,7 +105,7 @@ class Multitask(nn.Module):
         return out
 
 class CustomLoss(nn.Module):
-    def __init__(self, use_mean=True, use_stddev=True, use_dists=True, alpha = 1):
+    def __init__(self, use_mean=True, use_stddev=True, use_dists=True, alpha=1):
         super(CustomLoss, self).__init__()
 
         self.use_mean = use_mean
