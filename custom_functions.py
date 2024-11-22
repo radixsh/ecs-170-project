@@ -348,7 +348,7 @@ class Rayleigh(Distribution):
         return rng.rayleigh(self.scale, sample_size)
 
     def pdf(self, x):
-        return sps.rayleigh.pdf(x, loc=self.mean, scale=self.scale)
+        return sps.rayleigh.pdf(x, scale=self.scale)
 
 class Wald(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
