@@ -20,40 +20,33 @@ as follows:
   estimated mean and standard deviation)
 
 Next steps:
-- [x] Move on to more types of distributions
-- [x] Measure current performance (using some standardized method), generate
-  some nice pretty graphs
-- [x] Hyperparameter tuning: Find best TRAINING_SIZE (100)
-- [ ] **Hyperparameter tuning: Find best SAMPLE_SIZE**
-- [ ] **Hyperparameter tuning: Find best BATCH_SIZE** (need bug fix first; see
-  below)
-- [ ] Hyperparameter tuning: Find best EPOCHS
-- [ ] Train the model separately on different runs, and save only the best one
-  to `model_weights.pth` (currently, it's saving the last run's weights, not the
-  best one)
-- [ ] Sanity-check the model's performance: For a few different queries, graph
-  the samples provided to the model, and overlay both the model's guesses and
-  the true distribution family, mean, and standard deviation
-- [ ] Move on to multi-dimensional data
-
-Bug list:
-- [ ] When attempting to tune hyperparameter BATCH_SIZE,
-  regression_performance.py does not properly generate big test datasets to
-  match up with the large BATCH_SIZE. This results in inaccurate regression
-  metrics, as each model is tested on a test dataset that is much smaller than
-  the batch size and therefore only gives one uninformed loss value per (or MAE,
-  etc.)
+- [x] Distinguish between 9 different distribution families
+- [x] Measure single-variable regression performance, generate some nice pretty
+  graphs
+- [x] Make visualizations to sanity-check the model's performance on
+  single-variable data: Plot the sample data points, the model's predicted
+  distribution, and the ground truth distribution
+- [x] Generate multi-dimensional data
+- [x] Multidimensional hyperparameter tuning: Find best SAMPLE_SIZE
+- [ ] Multidimensional hyperparameter tuning: Find best BATCH_SIZE
+- [ ] Multidimensional hyperparameter tuning: Find best EPOCHS
+- [ ] Multidimensional hyperparameter tuning: Find best TRAINING_SIZE (less
+  priority because, presumably, biggest is best)
+- [ ] Train the model separately on different runs, and save only the best one?
+  (probably not implementing this)
+- [ ] Sanity-check (visualize) the model's performance on 2-dimensional data?
+  (probably not implementing this; doing Desmos instead)
 
 ## Main useful files
 ### `train_multiple.py`
 Trains multiple models, and saves each one's weights into a new `models`
 subdirectory. Each model has hyperparameters set in `env.py`.
 
-Models are trained on data from the `data` directory. This script generates new
-data if needed: if `data/train_dataset` is 100 entries long, but `env.py`
-currently calls for `TRAINING_SIZE=300`, then `train_multiple.py` will
-regenerate a 300-entry training dataset and overwrite `data/train_dataset` with
-it.
+This script generates new data if needed: for instance, if a file in the `data`
+directory has 1000 training examples, but our current TRAINING_SIZE value is
+500, then it will use only the first 500 entries. Conversely, if there is no
+suitable dataset in the `data` directory that is big enough (and has matching
+dimensionality and SAMPLE_SIZE), then this script will generate new data.
 
 ### `regression_performance.py`
 Creates scatter plots of regression performance of each model in the `models`
@@ -62,18 +55,32 @@ classification yet). Performance is measured in terms of mean average error,
 mean average percentage error, and R^2 correlation coefficient. The images are
 saved in the `results` subdirectory.
 
+### `sanity_check.py`
+THIS FILE ONLY TESTS MODELS TRAINED ON SINGLE-DIMENSION DATA.
+
+Takes one command-line argument: the name of the model weights file.
+
+`sanity_check.py` generates data for each of the 9 distributions and tests your
+model on it. It plots the model's predicted distribution and the ground truth
+distribution on the same plot so you can understand visually how well it did.
+
 ## Documentation for supporting files
 ### `custom_functions.py`
-Provides a custom loss function that appropriately deals with both categorical
-data (distribution family) and numerical data (mean and standard deviation).
-Also provides a custom multitask layer for our neural net ("multitask" because
-it performs both classification and regression tasks).
+Provides a custom loss function, custom multitask layer, and distribution
+classes for each of the 9 distributions.
 
-In the loss function, we call `softmax()` on each one-hot guess individually to
-convert it into what looks like a probability measure. This gets the loss
-function working. However, since this post-processing is happening only in the
-loss function and not in the model itself, if we ever want to directly read the
-outputs of the model, then we have to also call `softmax()` there too.
+*Multitask*: Custom multitask layer for our neural net ("multitask" because it
+performs both classification and regression).
+
+*CustomLossFunction()*: Deals with both categorical data (distribution family)
+and numerical data (mean and standard deviation).
+
+*CustomLossFunction() notes*: In the loss function, we call `softmax()` on each
+one-hot guess individually to convert it into what looks like a probability
+measure. This gets the loss function working. However, since this
+post-processing is happening only in the loss function and not in the model
+itself, if we ever want to directly read the outputs of the model, then we have
+to also call `softmax()` there too.
 
 We tried doing `softmax()` in `train.py`, but PyTorch said it couldn't figure
 out what the loss function's `backward()` should be. (For context, the gradient
