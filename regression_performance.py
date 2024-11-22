@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE, VALUES
 from build_model import build_model
 from train_multiple import get_dataloader
-from custom_functions import DISTRIBUTIONS, make_weights_filename
+from custom_functions import DISTRIBUTIONS, make_weights_filename, get_indices
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -33,37 +33,74 @@ def test_model(model):
         for X, y in test_dataloader:
             X, y = X.to(DEVICE).float(), y.to(DEVICE).float()
 
-            # For some reason, y looks like this:
-            # tensor([[1.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-            #     0.5348, 0.0965]])
-            # So I have to do y = y[0] to access the list, and then get the
-            # mean with [-2] (or stddev with [-1]) after that
-            actual_mean = y[0][-1]
-            actual_stddev = y[0][-2]
-            actual_means.append(actual_mean)
-            actual_stddevs.append(actual_stddev)
-
-            # Same with predictions
+            # Call the model
             pred = model(X)
-            predicted_mean = pred[0][-1]
-            predicted_stddev = pred[0][-2]
-            predicted_means.append(predicted_mean)
-            predicted_stddevs.append(predicted_stddev)
 
-    mean_mae = mean_absolute_error(actual_means, predicted_means)
-    mean_mape = mean_absolute_percentage_error(actual_means, predicted_means)
-    mean_r2_score = r2_score(actual_means, predicted_means)
-    stddev_mae = mean_absolute_error(actual_stddevs, predicted_stddevs)
-    stddev_mape = mean_absolute_percentage_error(actual_stddevs, predicted_stddevs)
-    stddev_r2_score = r2_score(actual_stddevs, predicted_stddevs)
+            # Indices for means and stddevs
+            mean_idxs = get_indices(mean=True, dims = range(1,NUM_DIMENSIONS+1))
+            stddev_idxs = get_indices(stddev=True, dims = range(1,NUM_DIMENSIONS+1))
+
+            # Grab appropriate values
+            curr_actual_means = y[0][mean_idxs]
+            curr_actual_stddevs = y[0][stddev_idxs]
+            curr_predicted_means = pred[0][mean_idxs]
+            curr_predicted_stddevs = pred[0][stddev_idxs]
+
+            # Need to transpose them for processing!
+            curr_actual_means = curr_actual_means.unsqueeze(1)
+            curr_actual_stddevs = curr_actual_stddevs.unsqueeze(1)
+            curr_predicted_means = curr_predicted_means.unsqueeze(1)
+            curr_predicted_stddevs = curr_predicted_stddevs.unsqueeze(1)
+
+            # Store them for processing
+            actual_means.append(curr_actual_means)
+            actual_stddevs.append(curr_actual_stddevs)
+            predicted_means.append(curr_predicted_means)
+            predicted_stddevs.append(curr_predicted_stddevs)
+
+    mean_maes = []
+    mean_mapes = []
+    mean_r2_scores = []
+    stddev_maes = []
+    stddev_mapes = []
+    stddev_r2_scores = []
+
+    # If there's a better way to do this, go ahead
+    # But note that averaging across dimensions first then taking the MAE
+    # is NOT the same as MAE then averaging across dimensions (what this nonsense is doing)
+    # Also don't ask me why all the other ranges are offset and this one isn't
+    for dim in range(NUM_DIMENSIONS):
+
+        curr_mean_mae = mean_absolute_error(actual_means[dim], predicted_means[dim])
+        curr_mean_mape = mean_absolute_percentage_error(actual_means[dim], predicted_means[dim])
+        curr_mean_r2_score = r2_score(actual_means[dim], predicted_means[dim])
+        curr_stddev_mae = mean_absolute_error(actual_stddevs[dim], predicted_stddevs[dim])
+        curr_stddev_mape = mean_absolute_percentage_error(actual_stddevs[dim], predicted_stddevs[dim])
+        curr_stddev_r2_score = r2_score(actual_stddevs[dim], predicted_stddevs[dim])
+
+        mean_maes.append(curr_mean_mae)
+        mean_mapes.append(curr_mean_mape)
+        mean_r2_scores.append(curr_mean_r2_score)
+        stddev_maes.append(curr_stddev_mae)
+        stddev_mapes.append(curr_stddev_mape)
+        stddev_r2_scores.append(curr_stddev_r2_score)
+
+    # Average across all dimensions
+    # Top 10 worst variables names
+    mean_mean_mae = np.mean(mean_maes)
+    mean_mean_mape = np.mean(mean_mapes)
+    mean_mean_r2_score = np.mean(mean_r2_scores)
+    mean_stddev_mae = np.mean(stddev_maes)
+    mean_stddev_mape = np.mean(stddev_mapes)
+    mean_stddev_r2_score = np.mean(stddev_r2_scores)
 
     out = {
-        "mean_mae": mean_mae,
-        "mean_mape": mean_mape,
-        "mean_r2_score": mean_r2_score,
-        "stddev_mae": stddev_mae,
-        "stddev_mape": stddev_mape,
-        "stddev_r2_score": stddev_r2_score,
+        "mean_mae": mean_mean_mae,
+        "mean_mape": mean_mean_mape,
+        "mean_r2_score": mean_mean_r2_score,
+        "stddev_mae": mean_stddev_mae,
+        "stddev_mape": mean_stddev_mape,
+        "stddev_r2_score": mean_stddev_r2_score,
     }
 
     return out
