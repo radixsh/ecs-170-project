@@ -6,19 +6,30 @@ import time
 import torch
 import os
 import re
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, accuracy_score
 from torch.utils.data import DataLoader
 
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE
 from build_model import build_model
 from train_multiple import get_dataloader
 from generate_data import DISTRIBUTION_FUNCTIONS
+from custom_functions import get_indices
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
+# Regression: Graph how loss, R^2, and MAE varies with different sample sizes,
+# training sizes, epoch counts, and/or learning rate
+
+# Classification: Graph how accuracy, precision, recall, and F1 score
+# varies with different sample sizes, training sizes, epoch counts, and/or
+# learning rate
+# - there's overall accuracy, and then there's accuracy per class
+# - f1, precision, recall are only per class
+
+# regression performance
 def get_mae_mape_r2(model, desired):
     if desired == "mean":
         index = -2
@@ -55,7 +66,41 @@ def get_mae_mape_r2(model, desired):
             mean_absolute_percentage_error(actuals, guesses),
             r2_score(actuals, guesses))
 
-def create_png(name, x_values, means, stddevs):
+def get_accuracy(model):
+    index = get_indices(dists=True)
+    test_dataloader = get_dataloader(CONFIG, 'data/test_dataset',
+                                     examples_count=CONFIG['TEST_SIZE'])
+    model.eval()
+    actuals = []
+    guesses = []
+    with torch.no_grad():
+        for X, y in test_dataloader:
+            X, y = X.to(DEVICE).float(), y.to(DEVICE).float()
+            
+            # Extract actual distribution
+            actual_dist = y[0][index]
+            actuals.append(actual_dist)
+
+            # Get predicted distribution
+            pred = model(X)
+            predicted_dist = pred[0][index]
+            guesses.append(predicted_dist)
+
+            print(f'Actual: {actual_dist}, Predicted: {predicted_dist}')
+
+    # Convert lists of tensors to a single tensor
+    actuals = torch.stack(actuals)
+    guesses = torch.stack(guesses)
+
+    # Convert distributions to class labels
+    actual_labels = torch.argmax(actuals, dim=-1)
+    predictions = torch.argmax(guesses, dim=-1)
+
+    # Ensure compatibility with sklearn (convert to NumPy)
+    return accuracy_score(actual_labels.cpu().numpy(), predictions.cpu().numpy())
+
+# regression pngs
+def regression_png(name, x_values, means, stddevs):
     both = means + stddevs + [0]
     plt.ylim(min(both) * 1.1, max(both) * 1.1)
     plt.ylabel(name)
@@ -88,8 +133,30 @@ def create_png(name, x_values, means, stddevs):
     plt.savefig(destination, bbox_inches="tight")
     plt.show()
 
-# Goal: Graph how loss, R^2, and MAE varies with different sample sizes,
-# training sizes, epoch counts, and/or learning rate
+def classification_png(name, x_values, accuracies):
+    plt.ylim(min(accuracies) * 0.9, max(accuracies) * 1.1)
+    plt.ylabel(name)
+
+    x_values = np.float64(x_values)
+    sorted_indices = np.argsort(x_values)
+    x_values = x_values[sorted_indices]
+    accuracies = np.array(accuracies)[sorted_indices]
+
+    plt.scatter(x_values, accuracies, color="royalblue", label="Accuracies")
+    slope, intercept = np.polyfit(x_values, accuracies, deg=1)
+    trend = slope * x_values + intercept
+    plt.plot(x_values, trend, color="royalblue",
+             label=f'Slope: {slope}')
+
+    plt.gca().set_xscale('log')
+    plt.xlabel(HYPERPARAMETER)
+
+    plt.title(name)
+    plt.legend(bbox_to_anchor=(1,1), loc="upper left")
+    destination = f"results/{HYPERPARAMETER.lower()}_{name.replace(' ', '_')}.png"
+    plt.savefig(destination, bbox_inches="tight")
+    plt.show()
+
 def main():
     start = time.time()
 
@@ -116,6 +183,7 @@ def main():
     mean_r2s = []
     stddev_r2s = []
     hyperparams = []       # For matplotlib graphs
+    accuracies = []
     count = 0
     for filename in model_filenames:
         model_start = time.time()
@@ -153,11 +221,14 @@ def main():
         stddev_mapes.append(stddev_mape)
         stddev_r2s.append(stddev_r2)
 
+        accuracy = get_accuracy(model)
+        accuracies.append(accuracy)
         model_end = time.time()
         logger.info(f"{HYPERPARAMETER}={hyperparam}\t--> "
                     f"mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
                     f"\n\t\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
                     f"\n\t\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "
+                    f"accuracy={accuracy:.2f}"
                     f"(Finished in {model_end - model_start:.2f} seconds)")
 
     end = time.time()
@@ -165,12 +236,13 @@ def main():
     if count == 0:
         return
 
-    create_png("MAE (mean average error)",
+    regression_png("MAE (mean average error)",
                hyperparams, mean_maes, stddev_maes)
-    create_png("MAPE (mean average percentage error)",
+    regression_png("MAPE (mean average percentage error)",
                hyperparams, mean_mapes, stddev_mapes)
-    create_png("R^2 (correlation coefficient)",
+    regression_png("R^2 (correlation coefficient)",
                hyperparams, mean_r2s, stddev_r2s)
+    classification_png("Accuracy", hyperparams, accuracies)
 
 if __name__ == "__main__":
     main()
