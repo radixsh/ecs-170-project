@@ -191,7 +191,7 @@ def main():
         stddev_mapes.append(stddev_mape)
         stddev_r2s.append(stddev_r2)
         
-        # Testing function call to measure classification performance given F1 score, recall, precision, and accuracy.
+        # Get classification performance metrics: F1 score, recall, precision, and accuracy...#TODO: It's not outputting ahhhhh
         f1, precision, recall, accuracy = get_classification_metrics(model)
 
         logger.info(f"Classification Metrics for {HYPERPARAMETER}={hyperparam}: "
