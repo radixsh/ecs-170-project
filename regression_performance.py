@@ -9,31 +9,26 @@ import re
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score
 from torch.utils.data import DataLoader
 
-from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE
+from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE, VALUES
 from build_model import build_model
 from train_multiple import get_dataloader
-from generate_data import DISTRIBUTION_FUNCTIONS
+from custom_functions import DISTRIBUTIONS, make_weights_filename
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
-def get_mae_mape_r2(model, desired):
-    if desired == "mean":
-        index = -2
-    elif desired == "stddev":
-        index = -1
-    else:
-        logger.warning(f"Passed unreadable string to get_mae_mape_r2(), "
-                       f"do you want mean or stddev?")
-        return
+def test_model(model):
 
-    test_dataloader = get_dataloader(CONFIG, 'data/test_dataset',
-                                     examples_count=CONFIG['TEST_SIZE'])
+    test_dataloader = get_dataloader(CONFIG,mode='TEST')
     model.eval()
-    actuals = []
-    guesses = []
+
+    actual_means = []
+    actual_stddevs = []
+    predicted_means = []
+    predicted_stddevs = []
+
     with torch.no_grad():
         for X, y in test_dataloader:
             X, y = X.to(DEVICE).float(), y.to(DEVICE).float()
@@ -43,17 +38,35 @@ def get_mae_mape_r2(model, desired):
             #     0.5348, 0.0965]])
             # So I have to do y = y[0] to access the list, and then get the
             # mean with [-2] (or stddev with [-1]) after that
-            actual_value = y[0][index]
-            actuals.append(actual_value)
+            actual_mean = y[0][-1]
+            actual_stddev = y[0][-2]
+            actual_means.append(actual_mean)
+            actual_stddevs.append(actual_stddev)
 
             # Same with predictions
             pred = model(X)
-            predicted_value = pred[0][index]
-            guesses.append(predicted_value)
+            predicted_mean = pred[0][-1]
+            predicted_stddev = pred[0][-2]
+            predicted_means.append(predicted_mean)
+            predicted_stddevs.append(predicted_stddev)
 
-    return (mean_absolute_error(actuals, guesses),
-            mean_absolute_percentage_error(actuals, guesses),
-            r2_score(actuals, guesses))
+    mean_mae = mean_absolute_error(actual_means, predicted_means)
+    mean_mape = mean_absolute_percentage_error(actual_means, predicted_means)
+    mean_r2_score = r2_score(actual_means, predicted_means)
+    stddev_mae = mean_absolute_error(actual_stddevs, predicted_stddevs)
+    stddev_mape = mean_absolute_percentage_error(actual_stddevs, predicted_stddevs)
+    stddev_r2_score = r2_score(actual_stddevs, predicted_stddevs)
+
+    out = {
+        "mean_mae": mean_mae,
+        "mean_mape": mean_mape,
+        "mean_r2_score": mean_r2_score,
+        "stddev_mae": stddev_mae,
+        "stddev_mape": stddev_mape,
+        "stddev_r2_score": stddev_r2_score,
+    }
+
+    return out
 
 def create_png(name, x_values, means, stddevs):
     both = means + stddevs + [0]
@@ -101,64 +114,69 @@ def main():
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)
 
-    model_filenames = []
-    for item in os.listdir(models_directory):
-        fullpath = os.path.join(models_directory, item)
-        filenameified = HYPERPARAMETER.lower().replace(' ', '_')
-        if os.path.isfile(fullpath) and filenameified in fullpath:
-            model_filenames.append(fullpath)
-    print(f'Analyzing {model_filenames}')
-
     mean_maes = []
     stddev_maes = []
     mean_mapes = []
     stddev_mapes = []
-    mean_r2s = []
-    stddev_r2s = []
+    mean_r2_scores = []
+    stddev_r2_scores = []
     hyperparams = []       # For matplotlib graphs
     count = 0
-    for filename in model_filenames:
-        model_start = time.time()
 
-        # Update CONFIG[HYPERPARAMETER] with the value from filename
-        match = re.search(r'(\d+).pth$', filename)
-        if match:
-            hyperparam = int(match.group(1))
-            hyperparams.append(hyperparam)     # For matplotlib graphs
-            CONFIG[HYPERPARAMETER] = hyperparam
-            count += 1
-        else:
-            logger.info(f'(No {HYPERPARAMETER} detected in "{filename}", skipping)')
+    for hyperparam_val in VALUES:
+        
+        # Update CONFIG with the hyperparameter
+        CONFIG[HYPERPARAMETER] = hyperparam_val
+        
+        # Filename to search for
+        model_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
+                                              CONFIG['SAMPLE_SIZE'],
+                                              NUM_DIMENSIONS)
+        model_filename = os.path.join("models", model_filename)
+        
+        logger.info(f'Analyzing model at {model_filename}...')
+
+        # Try to load it in
+        state_dict = torch.load(model_filename)
+        if state_dict is None:
+            # Could add more info to this debug.
+            logger.debug("Model not found, skipping!")
             continue
 
-        # For each new sample size, re-initialize
+        model_start = time.time()              # For timing
+        hyperparams.append(hyperparam_val)     # For matplotlib graphs
+        count += 1                             # For debug
+        
+        # Reinitialize
         input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
-        output_size = (len(DISTRIBUTION_FUNCTIONS) + 2) * NUM_DIMENSIONS
+        output_size = (len(DISTRIBUTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
 
-        # Load the model's weights
-        state_dict = torch.load(filename)
-        if state_dict is None:
-            logger.debug("State dict is illegible, skipping")
-            continue
         model.load_state_dict(state_dict)
 
         # Get MAE and R2 for this sample size
-        mean_mae, mean_mape, mean_r2 = get_mae_mape_r2(model, "mean")
+        test_results = test_model(model)
+
+        mean_mae = test_results['mean_mae']
+        mean_mape = test_results['mean_mape']
+        mean_r2_score = test_results['mean_r2_score']
+        stddev_mae = test_results['stddev_mae']
+        stddev_mape = test_results['stddev_mape']
+        stddev_r2_score = test_results['stddev_r2_score']
+
         mean_maes.append(mean_mae)
         mean_mapes.append(mean_mape)
-        mean_r2s.append(mean_r2)
-        stddev_mae, stddev_mape, stddev_r2 = get_mae_mape_r2(model, "stddev")
+        mean_r2_scores.append(mean_r2_score)
         stddev_maes.append(stddev_mae)
         stddev_mapes.append(stddev_mape)
-        stddev_r2s.append(stddev_r2)
+        stddev_r2_scores.append(stddev_r2_score)
 
         model_end = time.time()
-        logger.info(f"{HYPERPARAMETER}={hyperparam}\t--> "
-                    f"mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
-                    f"\n\t\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
-                    f"\n\t\t\t--> mean_r2={mean_r2:.2f},\tstddev_r2={stddev_r2:.2f} "
-                    f"(Finished in {model_end - model_start:.2f} seconds)")
+        logger.info(f"{HYPERPARAMETER}={hyperparam_val}"
+                    f"\n\t\t--> mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
+                    f"\n\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
+                    f"\n\t\t--> mean_r2={mean_r2_score:.2f},\tstddev_r2={stddev_r2_score:.2f} "
+                    f"\n(Finished in {model_end - model_start:.2f} seconds)")
 
     end = time.time()
     logger.info(f"Analyzed {count} models in {end - start:.2f} seconds")
@@ -170,7 +188,7 @@ def main():
     create_png("MAPE (mean average percentage error)",
                hyperparams, mean_mapes, stddev_mapes)
     create_png("R^2 (correlation coefficient)",
-               hyperparams, mean_r2s, stddev_r2s)
+               hyperparams, mean_r2_scores, stddev_r2_scores)
 
 if __name__ == "__main__":
     main()

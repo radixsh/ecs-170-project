@@ -148,7 +148,11 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
         logger.info(f'No valid data found, generating fresh data...')
         dataset = make_dataset(config, mode)
     
-    dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
+    if mode == 'TRAIN':
+        dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
+    elif mode == 'TEST': # batch size should just be 1 for testing.
+        dataloader = DataLoader(dataset, batch_size=1)
+
     return dataloader
 
 # If running this file directly as a script, then generate some training
