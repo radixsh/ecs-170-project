@@ -77,22 +77,44 @@ def parse_data_filename(filename):
         "NUM_DIMS": int(num_dims)
     }
 
-# Gets the indices specified of the input... goofy, but convenient
-def get_indices(dists=False, mean=False, stddev=False, dims=[1]):
+# Generates the indices for use in our vector format:
+# dists=True gets the onehot portion(s) of the vector
+# mean=True gets the mean(s), stddev=True gets the stddev(s)
+# dims can either be an int or list of ints, 
+#   indicates which dimension (distribution-wise) the indices are for
+#   gets every dimension available by default
+# mode indicates whether different sets of indices
+#   should be in one array, or in a multidimensional array
+# mode='join' -> 1d array (default)
+# mode='split' -> 2d array
+
+# Example:
+# x = [1,0,0,0,0,0,0,0,0,3.1,0.6,0,1,0,0,0,0,0,0,0,4.5,1.2]
+# x[get_indices(dists=True,dims=1)] -> [1,0,0,0,0,0,0,0,0]
+# x[get_indices(mean=True,stddev=True,dims=2)] -> [4.5,1.2]
+# x[get_indices(mean=True,dims=[1,2])] -> [3.1,4.5]
+# x[get_indices(dists=True,dims=[1,2],mode='split')]
+#   -> [[1,0,0,0,0,0,0,0,0],
+#       [0,1,0,0,0,0,0,0,0]]
+
+def get_indices(dists=False, mean=False, stddev=False, 
+                dims=range(1,NUM_DIMENSIONS+1)):
     num_dists = len(DISTRIBUTIONS)
+    if isinstance(dims,int):
+        dims = [dims]
     out = []
     for dim in dims:
         if dists:
-            out += range((dim - 1) * (num_dists + 2), (dim - 1) * (num_dists + 2) + num_dists)
+            onehot_range = range((dim - 1) * (num_dists + 2), 
+                                 (dim - 1) * (num_dists + 2) + num_dists)
+            out += onehot_range
         if mean:
-            out.append(dim * (num_dists + 2) - 2)
+            mean_idx = dim * (num_dists + 2) - 2
+            out.append(mean_idx)
         if stddev:
-            out.append(dim * (num_dists + 2) - 1)
+            stddev_idx = dim * (num_dists + 2) - 1
+            out.append(stddev_idx)
     return out
-
-# Grabs the specified feature(s) at the specified dimension(s)
-def extract_features(tensor, dists=False, mean=False, stddev=False, dims=[1]):
-    return tensor[get_indices(dists, mean, stddev, dims)]
 
 class Multitask(nn.Module):
     def __init__(self, temp=1.0):
@@ -102,7 +124,7 @@ class Multitask(nn.Module):
     def forward(self, x):
         out = x.clone()
         for n in range(1, NUM_DIMENSIONS+1):
-            idxs = get_indices(dists=True, dims=[n])
+            idxs = get_indices(dists=True, dims=n)
             # How does torch possibly support this
             # softmaxes the slice representing the dimension vector
             out[0][idxs] = torch.nn.functional.softmax(self.temp * out[0][idxs], dim=0)
@@ -161,16 +183,16 @@ class CustomLoss(nn.Module):
         diff = torch.abs(pred[0] - y[0]) / NUM_DIMENSIONS
 
         # Calculate MAE on means per dimension
-        mean_idxs = get_indices(mean=True, dims=dim_range)
+        mean_idxs = get_indices(mean=True)
         mean_loss = torch.sum(diff[mean_idxs])
 
         # Calculate MAE on stddevs per dimension
-        stddev_idxs = get_indices(stddev=True, dims=dim_range)
+        stddev_idxs = get_indices(stddev=True)
         stddev_loss = torch.sum(diff[stddev_idxs])
 
         # Approximate total variation distance between distributions
         # Need to look up weights in dist_var_matrix
-        dist_idxs = get_indices(dists=True, dims=dim_range)
+        dist_idxs = get_indices(dists=True)
         weights = self.get_weights(y[0][dist_idxs])
         classification_loss = torch.dot(diff[dist_idxs], weights)
 

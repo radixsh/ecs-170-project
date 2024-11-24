@@ -3,6 +3,7 @@ import time
 import torch
 import os
 from torch.utils.data import Dataset
+import numpy as np
 
 from env import DEVICE, CONFIG, HYPERPARAMETER, VALUES, NUM_DIMENSIONS
 from build_model import build_model
@@ -21,6 +22,7 @@ logger.addHandler(console_handler)
 def train_model(dataloader, model, loss_function, optimizer, device):
     model.train()
     size = len(dataloader.dataset)  # For debug logs
+    losses = []
 
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device).float(), y.to(device).float()
@@ -33,9 +35,11 @@ def train_model(dataloader, model, loss_function, optimizer, device):
 
         # if batch % 100 == 0:
         loss_value = loss.item()
+        losses.append(loss_value)
         current = batch * dataloader.batch_size + len(X)#(batch + 1) * len(X)
         logger.debug(f"Loss after batch {batch}:\t"
                      f"{loss_value:>7f}  [{current:>5d}/{size:>5d}]")
+    return np.mean(losses)
 
 def pipeline(model, config):
     start = time.time()
@@ -62,7 +66,8 @@ def pipeline(model, config):
 
     for epoch in range(config['EPOCHS']):
         logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
-        train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
+        avg_loss = train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
+        logger.info(f"Average loss for epoch {epoch + 1}: {avg_loss}")
 
     end = time.time()
     logger.info(f"Finished training in {end - start:.2f} seconds")

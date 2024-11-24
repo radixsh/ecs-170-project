@@ -8,6 +8,7 @@ import os
 import re
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, accuracy_score, f1_score, recall_score, precision_score
 from torch.utils.data import DataLoader
+import warnings
 
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE, VALUES
 from build_model import build_model
@@ -18,6 +19,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
+
+# Disable "Polyfit may be poorly conditioned" warning for testing
+warnings.simplefilter('ignore', np.RankWarning)
 
 distribution_indices = list(DISTRIBUTIONS.keys())
 
@@ -39,47 +43,61 @@ def test_model(model):
     test_dataloader = get_dataloader(CONFIG,mode='TEST')
     model.eval()
 
+    # For storage purposes
     actual_means = []
     actual_stddevs = []
-    predicted_means = []
-    predicted_stddevs = []
+    actual_dists = []
+    pred_means = []
+    pred_stddevs = []
+    pred_dists = []
 
     with torch.no_grad():
-        for X, y in test_dataloader:
-            X, y = X.to(DEVICE).float(), y.to(DEVICE).float()
+        for data_point, label in test_dataloader:
+            data_point, label = data_point.to(DEVICE).float(), label.to(DEVICE).float()[0]
 
             # Call the model
-            pred = model(X)
+            pred = model(data_point)[0]
 
             # Curr_ refers to current data point
             curr_actual_means = []
             curr_actual_stddevs = []
-            curr_predicted_means = []
-            curr_predicted_stddevs = []
+            curr_actual_dists = []
+            curr_pred_means = []
+            curr_pred_stddevs = []
+            curr_pred_dists = []
 
             # Go through each dimension
             for dim in range(1, NUM_DIMENSIONS+1):
-                dim_mean_idxs = get_indices(mean=True, dims = [dim])
-                dim_stddev_idxs = get_indices(stddev=True, dims = [dim])
+                # Acquire appropiate indices for features
+                dim_mean_idxs = get_indices(mean=True, dims=dim)
+                dim_stddev_idxs = get_indices(stddev=True,dims=dim)
+                dim_dist_idxs = get_indices(dists=True, dims=dim)
 
                 # Get the specified values; dim_ refers to current dimensions
-                dim_actual_means = y[0][dim_mean_idxs]
-                dim_actual_stddevs = y[0][dim_stddev_idxs]
-                dim_predicted_means = pred[0][dim_mean_idxs]
-                dim_predicted_stddevs = pred[0][dim_stddev_idxs]
+                dim_actual_means = label[dim_mean_idxs]
+                dim_actual_stddevs = label[dim_stddev_idxs]
+                #dim_actual_dists = label[dim_dist_idxs]
+                dim_actual_dists = np.argmax(label[dim_dist_idxs],keepdims=True)
+                dim_pred_means = pred[dim_mean_idxs]
+                dim_pred_stddevs = pred[dim_stddev_idxs]
+                #dim_pred_dists = pred[dim_dist_idxs]
+                dim_pred_dists = np.argmax(pred[dim_dist_idxs],keepdims=True)
 
                 curr_actual_means.append(dim_actual_means)
                 curr_actual_stddevs.append(dim_actual_stddevs)
-                curr_predicted_means.append(dim_predicted_means)
-                curr_predicted_stddevs.append(dim_predicted_stddevs)
-
-            # After looping through dims, our curr_actual_stuff looks like
-            # [dim1_stuff, dim2_stuff, ...]
-            # Store them for further processing
+                curr_actual_dists.append(dim_actual_dists)
+                curr_pred_means.append(dim_pred_means)
+                curr_pred_stddevs.append(dim_pred_stddevs)
+                curr_pred_dists.append(dim_pred_dists)
+            
+            # Store them for processing
             actual_means.append(curr_actual_means)
             actual_stddevs.append(curr_actual_stddevs)
-            predicted_means.append(curr_predicted_means)
-            predicted_stddevs.append(curr_predicted_stddevs)
+            actual_dists.append(curr_actual_dists)
+            pred_means.append(curr_pred_means)
+            pred_stddevs.append(curr_pred_stddevs)
+            pred_dists.append(curr_pred_dists)
+
 
     # actual_stuff now looks like:
     # [[x1_dim1_stuff, x1_dim2_stuff, ...],
@@ -89,15 +107,12 @@ def test_model(model):
     # [[x1_dim1_stuff, x2_dim1_stuff, ...],
     #  [x1_dim2_stuff, x2_dim2_stuff, ...],
     #  ...]
-    # ChatGPT is cracked at pytorch
-    actual_means = torch.tensor(actual_means)
-    actual_stddevs = torch.tensor(actual_stddevs)
-    predicted_means = torch.tensor(predicted_means)
-    predicted_stddevs = torch.tensor(predicted_stddevs)
-    actual_means = actual_means.transpose(0, 1)
-    actual_stddevs = actual_stddevs.transpose(0, 1)
-    predicted_means = predicted_means.transpose(0, 1)
-    predicted_stddevs = predicted_stddevs.transpose(0, 1)
+    actual_means = np.transpose(actual_means)[0]
+    actual_stddevs = np.transpose(actual_stddevs)[0]
+    actual_dists = np.transpose(actual_dists)[0]
+    pred_means = np.transpose(pred_means)[0]
+    pred_stddevs = np.transpose(pred_stddevs)[0]
+    pred_dists = np.transpose(pred_dists)[0]
 
     mean_maes = []
     mean_mapes = []
@@ -105,19 +120,39 @@ def test_model(model):
     stddev_maes = []
     stddev_mapes = []
     stddev_r2_scores = []
+    accuracy_scores = []
+    precision_scores = []
+    recall_scores = []
+    f1_scores = []
 
     # If there's a better way to do this, go ahead
     # But note that averaging across dimensions first then taking the MAE
     # is NOT the same as MAE then averaging across dimensions (what this nonsense is doing)
     # Also don't ask me why all the other ranges are offset and this one isn't
     for dim in range(NUM_DIMENSIONS):
-
-        curr_mean_mae = mean_absolute_error(actual_means[dim], predicted_means[dim])
-        curr_mean_mape = mean_absolute_percentage_error(actual_means[dim], predicted_means[dim])
-        curr_mean_r2_score = r2_score(actual_means[dim], predicted_means[dim])
-        curr_stddev_mae = mean_absolute_error(actual_stddevs[dim], predicted_stddevs[dim])
-        curr_stddev_mape = mean_absolute_percentage_error(actual_stddevs[dim], predicted_stddevs[dim])
-        curr_stddev_r2_score = r2_score(actual_stddevs[dim], predicted_stddevs[dim])
+        curr_mean_mae = mean_absolute_error(actual_means[dim], pred_means[dim])
+        curr_mean_mape = mean_absolute_percentage_error(actual_means[dim], pred_means[dim])
+        curr_mean_r2_score = r2_score(actual_means[dim], pred_means[dim])
+        curr_stddev_mae = mean_absolute_error(actual_stddevs[dim], pred_stddevs[dim])
+        curr_stddev_mape = mean_absolute_percentage_error(actual_stddevs[dim], pred_stddevs[dim])
+        curr_stddev_r2_score = r2_score(actual_stddevs[dim], pred_stddevs[dim])
+        curr_accuracy = accuracy_score(actual_dists[dim],pred_dists[dim])
+        # More complicated...
+        curr_precision = precision_score(actual_dists[dim],
+                                         pred_dists[dim],
+                                         labels=range(len(DISTRIBUTIONS)),
+                                         average=None,
+                                         zero_division=0.0)
+        curr_recall = recall_score(actual_dists[dim],
+                                   pred_dists[dim],
+                                   labels=range(len(DISTRIBUTIONS)),
+                                   average=None,
+                                   zero_division=0.0)
+        curr_f1 = f1_score(actual_dists[dim],
+                           pred_dists[dim],
+                           labels=range(len(DISTRIBUTIONS)),
+                           average=None,
+                           zero_division=0.0)
 
         mean_maes.append(curr_mean_mae)
         mean_mapes.append(curr_mean_mape)
@@ -125,64 +160,28 @@ def test_model(model):
         stddev_maes.append(curr_stddev_mae)
         stddev_mapes.append(curr_stddev_mape)
         stddev_r2_scores.append(curr_stddev_r2_score)
+        accuracy_scores.append(curr_accuracy)
+        precision_scores.append(curr_precision)
+        recall_scores.append(curr_recall)
+        f1_scores.append(curr_f1)
 
-    # Average across all dimensions
-    # Top 10 worst variables names
-    mean_mean_mae = np.mean(mean_maes)
-    mean_mean_mape = np.mean(mean_mapes)
-    mean_mean_r2_score = np.mean(mean_r2_scores)
-    mean_stddev_mae = np.mean(stddev_maes)
-    mean_stddev_mape = np.mean(stddev_mapes)
-    mean_stddev_r2_score = np.mean(stddev_r2_scores)
-
+    # Take means across all dimensions
     out = {
-        "mean_mae": mean_mean_mae,
-        "mean_mape": mean_mean_mape,
-        "mean_r2_score": mean_mean_r2_score,
-        "stddev_mae": mean_stddev_mae,
-        "stddev_mape": mean_stddev_mape,
-        "stddev_r2_score": mean_stddev_r2_score,
+        "mean_mae": np.mean(mean_maes),
+        "mean_mape": np.mean(mean_mapes),
+        "mean_r2_score": np.mean(mean_r2_scores),
+        "stddev_mae": np.mean(stddev_maes),
+        "stddev_mape": np.mean(stddev_mapes),
+        "stddev_r2_score": np.mean(stddev_r2_scores),
+        "accuracy": np.mean(accuracy_scores),
+        "mean_precision" : np.mean(precision_scores),
+        "mean_recall": np.mean(recall_scores),
+        "mean_f1": np.mean(f1_scores),
+        "precision_scores" : np.mean(precision_scores,axis=0),
+        "recall_scores": np.mean(recall_scores,axis=0),
+        "f1_scores": np.mean(f1_scores,axis=0),
     }
-
     return out
-
-def get_classification_metrics(model):
-    index = get_indices(dists=True)
-    test_dataloader = get_dataloader(CONFIG, mode='TEST')
-    model.eval()
-    actuals = []
-    guesses = []
-    with torch.no_grad():
-        for X, y in test_dataloader:
-            X, y = X.to(DEVICE).float(), y.to(DEVICE).float()
-            
-            # Extract actual distribution
-            actual_dist = y[0][index]
-            actuals.append(actual_dist)
-
-            # Get predicted distribution
-            pred = model(X)
-            predicted_dist = pred[0][index]
-            guesses.append(predicted_dist)
-
-            #print(f'Actual: {actual_dist}, Predicted: {predicted_dist}')
-
-    # Convert lists of tensors to a single tensor
-    actuals = torch.stack(actuals)
-    guesses = torch.stack(guesses)
-
-    # Convert distributions to class labels
-    actual_labels = torch.argmax(actuals, dim=-1)
-    predictions = torch.argmax(guesses, dim=-1)
-
-    # Ensure compatibility with sklearn (convert to NumPy)
-    return (accuracy_score(actual_labels.cpu().numpy(), predictions.cpu().numpy()),
-        f1_score(actual_labels.cpu().numpy(), predictions.cpu().numpy(),
-            average=None),
-        recall_score(actual_labels.cpu().numpy(),
-            predictions.cpu().numpy(), average=None),
-        precision_score(actual_labels.cpu().numpy(),
-            predictions.cpu().numpy(), average=None))
 
 # regression pngs
 def regression_png(name, x_values, means, stddevs):
@@ -263,8 +262,6 @@ def main():
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)
 
-    
-
     mean_maes = []
     stddev_maes = []
     mean_mapes = []
@@ -308,8 +305,13 @@ def main():
 
         model.load_state_dict(state_dict)
 
-        # Get MAE and R2 for this sample size
+        # Test the model, round to 3 decimal places
+        
         test_results = test_model(model)
+
+        decimals = 10 ** 3
+        for key, value in test_results.items():
+            test_results[key] = np.trunc(decimals * value) / decimals
 
         mean_mae = test_results['mean_mae']
         mean_mape = test_results['mean_mape']
@@ -317,6 +319,13 @@ def main():
         stddev_mae = test_results['stddev_mae']
         stddev_mape = test_results['stddev_mape']
         stddev_r2_score = test_results['stddev_r2_score']
+        accuracy = test_results['accuracy']
+        mean_precision = test_results['mean_precision']
+        mean_recall = test_results['mean_recall']
+        mean_f1 = test_results['mean_f1']
+        precision = test_results['precision_scores']
+        recall = test_results['recall_scores']
+        f1 = test_results['f1_scores']
 
         mean_maes.append(mean_mae)
         mean_mapes.append(mean_mape)
@@ -324,19 +333,27 @@ def main():
         stddev_maes.append(stddev_mae)
         stddev_mapes.append(stddev_mape)
         stddev_r2_scores.append(stddev_r2_score)
-
-        accuracy, f1, recall, precision = get_classification_metrics(model)
         accuracies.append(accuracy)
-        f1s.append(f1)
-        recalls.append(recall)
         precisions.append(precision)
-
+        recalls.append(recall)
+        f1s.append(f1)
+        
         model_end = time.time()
         logger.info(f"{HYPERPARAMETER}={hyperparam_val}"
-                    f"\n\t\t--> mean_mae={mean_mae:.2f},\tstddev_mae={stddev_mae:.2f} "
-                    f"\n\t\t--> mean_mape={mean_mape:.2f},\tstddev_mape={stddev_mape:.2f}"
-                    f"\n\t\t--> mean_r2={mean_r2_score:.2f},\tstddev_r2={stddev_r2_score:.2f} "
-                    f"\n(Finished in {model_end - model_start:.2f} seconds)")
+                    f"\n Regression:"
+                    f"\n\t\t-->  Mean MAE = {mean_mae:.2f}\t  Stddev MAE = {stddev_mae:.2f} "
+                    f"\n\t\t--> Mean MAPE = {mean_mape:.2f}\t Stddev MAPE = {stddev_mape:.2f}"
+                    f"\n\t\t-->   Mean R2 = {mean_r2_score:.2f}\t   Stddev R2 = {stddev_r2_score:.2f} "
+                    f"\n Classification:"
+                    f"\n\t\t-->         Accuracy = {accuracy}"
+                    f"\n\t\t-->   Mean precision = {mean_precision}"
+                    f"\n\t\t-->      Mean recall = {mean_recall}"
+                    f"\n\t\t-->    Mean F1 score = {mean_f1}"
+                    f"\n\t\t--> Precision scores = {precision}"
+                    f"\n\t\t-->    Recall scores = {recall}"
+                    f"\n\t\t-->        F1 scores = {f1}"
+                    f"\n(Finished in {model_end - model_start:.2f} seconds)"
+        )
 
     end = time.time()
     logger.info(f"Analyzed {count} models in {end - start:.2f} seconds")
