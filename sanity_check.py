@@ -80,20 +80,20 @@ def generate_2d():
     dataloader = DataLoader(dataset, batch_size=1)
     return dataloader
 
-def get_domain(support):
+def get_domain(dist):
     """
     Turns a support string ("R", "R+", or "I") into a linspace object for pyplot
     to graph.
     """
-    if support == 'R':
-        return np.linspace(-10, 10, GRAPH_FIDELITY)
-    elif support == 'R+':
-        return np.linspace(0, 10, GRAPH_FIDELITY)
-    elif support == 'I':
+    if dist.support == 'R':
+        x_min = dist.mean - 3 * dist.stddev
+        x_max = dist.mean + 3 * dist.stddev
+        return np.linspace(x_min, x_max, GRAPH_FIDELITY)
+    elif dist.support == 'R+':
+        x_max = dist.mean + 3 * dist.stddev
+        return np.linspace(0, x_max, GRAPH_FIDELITY)
+    elif dist.support == 'I':
         return np.linspace(0, 1, GRAPH_FIDELITY)
-    else:
-        print(f"Can't recognize domain {support}")
-        return np.linspace(-10, 10, GRAPH_FIDELITY)
 
 def list_to_tuple(points):
     """
@@ -161,7 +161,7 @@ def test_1d(model, dataloader):
             logger.debug(f"\npoints: {points}")
 
             actual_dist = get_dist_objects(labels)[0]
-            actual_domain = get_domain(actual_dist.support)
+            actual_domain = get_domain(actual_dist)
             actual_label = (f"actual: {actual_dist.name} "
                            f"(µ={actual_dist.mean:.2f}, "
                            f"σ={actual_dist.stddev:.2f})")
@@ -170,7 +170,7 @@ def test_1d(model, dataloader):
                      color=actual_color, label=actual_label)
 
             guess_dist = get_dist_objects(guesses)[0]
-            guess_domain = get_domain(guess_dist.support)
+            guess_domain = get_domain(guess_dist)
             guess_label = (f"guess: {guess_dist.name} "
                            f"(µ={guess_dist.mean:.2f}, "
                            f"σ={guess_dist.stddev:.2f})")
@@ -214,8 +214,8 @@ def test_2d(model, dataloader):
 
             actual_dim1, actual_dim2 = get_dist_objects(labels)
 
-            actual_dim1_domain = get_domain(actual_dim1.support)
-            actual_dim2_domain = get_domain(actual_dim2.support)
+            actual_dim1_domain = get_domain(actual_dim1)
+            actual_dim2_domain = get_domain(actual_dim2)
             ax.set_xlim(min(actual_dim1_domain), max(actual_dim1_domain))
             ax.set_ylim(min(actual_dim2_domain), max(actual_dim2_domain))
 

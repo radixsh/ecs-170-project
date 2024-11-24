@@ -15,10 +15,6 @@ logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
-# TODO: Increase batch size (I think it's currently 1)
-# Batch size 1: gradient calculations might be noisy :(
-# Big batch size: potentially not enough compute :(
-# Medium batch size: good for implicit regularization :)
 def train_model(dataloader, model, loss_function, optimizer, device):
     model.train()
     size = len(dataloader.dataset)  # For debug logs
@@ -81,7 +77,7 @@ def main():
     # Make sure the 'data' directory exists
     os.makedirs('data', exist_ok=True)
 
-    # Make sure the models directory exists
+    # Make sure the 'models' directory exists
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)
 
@@ -89,6 +85,13 @@ def main():
     for i, value in enumerate(VALUES):
         # Update TRAINING_SIZE in the dict from env.py
         CONFIG[HYPERPARAMETER] = value
+
+        # Show a warning if BATCH_SIZE and TRAIN_SIZE does not allow for at
+        # least 1000 gradient descent steps
+        if CONFIG['TRAIN_SIZE'] / CONFIG['BATCH_SIZE'] < 1000:
+            logger.warning(f"BATCH_SIZE {CONFIG['BATCH_SIZE']} is too small "
+                           f"for TRAIN_SIZE {CONFIG['TRAIN_SIZE']}. Increase "
+                           f"TRAIN_SIZE or reduce BATCH_SIZE.")
 
         # Filenames for various models
         dest_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
@@ -101,9 +104,8 @@ def main():
         output_size = (len(DISTRIBUTIONS) + 2) * NUM_DIMENSIONS
         model = build_model(input_size, output_size).to(DEVICE)
 
-        num_trainable_params = sum(param.numel() for param in model.parameters())
-
-        # Train the model anew, and save the resulting model's weights out
+        # Train a new model, and save its weights out
+        trainable_params = sum(param.numel() for param in model.parameters())
         logger.info(f"Training a new {NUM_DIMENSIONS}-dimensional model "
                     f"with these hyperparameters:\n"
                      f"\tTRAIN_SIZE = {CONFIG['TRAIN_SIZE']}\n"
@@ -111,12 +113,10 @@ def main():
                      f"\tBATCH_SIZE = {CONFIG['BATCH_SIZE']}\n"
                      f"\tEPOCHS = {CONFIG['EPOCHS']}\n"
                      f"Variable hyperparameter is {HYPERPARAMETER}. "
-                     f"Model has {num_trainable_params} trainable parameters.")
+                     f"Model has {trainable_params} trainable parameters.")
         train_start = time.time()
 
         model_weights = pipeline(model, CONFIG)
-        if model_weights is None:
-            logger.info("pipeline() did not return anything!!! mehhhhhh!!!!!")
         torch.save(model_weights, dest_filename)
 
         train_end = time.time()

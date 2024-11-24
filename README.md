@@ -1,13 +1,17 @@
 # ECS 170 AI Project: Deep Learning for Meta-Statistical Inference
 **Quickstart**:
+* _(Remove the `data` and `models` directories in case there are outdated
+  files)_
 * In `env.py`, set HYPERPARAMETER to whatever hyperparameter you want to change,
   and populate VALUES with the values you want HYPERPARAMETER to take on.
-* Run `train_multiple.py` to train multiple models on the different
-  HYPERPARAMETER values you set. The model weights will be saved into a new
-  `models` subdirectory.
-* Then run `performance.py` to measure the performance for guessing
-  mean and standard deviation; the scatter-plots will be saved as pngs into the
-  `results` subdirectory.
+* Run `train_multiple.py` to train models for each HYPERPARAMETER value you set.
+  The model weights will be saved into a new `models` subdirectory.
+* Then run `performance.py` to measure classification and regression performance
+  of each model. The scatter-plots will be saved as pngs into the `results`
+  subdirectory.
+* _Optionally, choose a model and run `sanity_check.py
+  models/your_model_here.pth` to visualize the specified model's classification
+  performance._
 
 **Background**: These neural nets identify the distribution family, mean, and
 standard deviation from which data points are drawn. The general architecture is
@@ -21,21 +25,24 @@ as follows:
 
 Next steps:
 - [x] Distinguish between 9 different distribution families
-- [x] Measure single-variable regression performance, generate some nice pretty
-  graphs
-- [x] Make visualizations to sanity-check the model's performance on
+- [x] Plot single-variable regression performance (MAE, MAPE, R^2)
+- [x] Sanity-check (visualize) the model's classification performance on
   single-variable data: Plot the sample data points, the model's predicted
-  distribution, and the ground truth distribution
-- [x] Generate multi-dimensional data
-- [x] Multidimensional hyperparameter tuning: Find best SAMPLE_SIZE
-- [ ] Multidimensional hyperparameter tuning: Find best BATCH_SIZE
+  distribution, and the ground truth distribution (2D visualizations)
+- [x] Generate multi-dimensional data, and add multi-dimensional training
+  support to neural network code
+- [x] Sanity-check (visualize) the model's classification performance on
+  2-dimensional distributions (3D visualizations)
+- [x] Plot multi-variable classification and regression performance (accuracy,
+  precision, recall, F1, MAE, MAPE, R^2)
+- [x] Multidimensional hyperparameter tuning: Find best SAMPLE_SIZE (30, 33, 36,
+  39, 42)
+- [ ] Multidimensional hyperparameter tuning: Find best BATCH_SIZE (in progress)
 - [ ] Multidimensional hyperparameter tuning: Find best EPOCHS
-- [ ] Multidimensional hyperparameter tuning: Find best TRAINING_SIZE (less
+- [ ] Multidimensional hyperparameter tuning: Find best TRAIN_SIZE (less
   priority because, presumably, biggest is best)
 - [ ] Train the model separately on different runs, and save only the best one?
   (probably not implementing this)
-- [ ] Sanity-check (visualize) the model's performance on 2-dimensional data?
-  (probably not implementing this; doing Desmos instead)
 
 ## Main useful files
 ### `train_multiple.py`
@@ -43,26 +50,29 @@ Trains multiple models, and saves each one's weights into a new `models`
 subdirectory. Each model has hyperparameters set in `env.py`.
 
 This script generates new data if needed: for instance, if a file in the `data`
-directory has 1000 training examples, but our current TRAINING_SIZE value is
-500, then it will use only the first 500 entries. Conversely, if there is no
-suitable dataset in the `data` directory that is big enough (and has matching
+directory has 1000 training examples, but our current TRAIN_SIZE value is 500,
+then it will use only the first 500 entries. Conversely, if there is no suitable
+dataset in the `data` directory that is big enough (and has matching
 dimensionality and SAMPLE_SIZE), then this script will generate new data.
 
 ### `performance.py`
-Creates scatter plots of performance of each model in the `models`
-directory wrt regression (mean and stddev guesses) and classification (accuracy, 
-f1, precall, precision). Performance is measured in terms of mean average error,
-mean average percentage error, and R^2 correlation coefficient. The images are
-saved in the `results` subdirectory.
+Creates scatter plots of performance of each model in `models`.
+
+- Classification: accuracy, precision, recall, F1-score
+- Regression: mean average error, mean average percentage error, and R^2
+  correlation coefficient
+
+The images are saved in the `results` subdirectory.
 
 ### `sanity_check.py`
-THIS FILE ONLY TESTS MODELS TRAINED ON SINGLE-DIMENSION DATA.
+Plots the model's predicted distribution and the ground truth distribution on
+the same plot so you can visualize its classification performance.
 
 Takes one command-line argument: the name of the model weights file.
 
-`sanity_check.py` generates data for each of the 9 distributions and tests your
-model on it. It plots the model's predicted distribution and the ground truth
-distribution on the same plot so you can understand visually how well it did.
+If `env.py`'s NUM_DIMENSIONS is 1, then `sanity_check.py` tests the model on
+each of the 9 distribution families. If `env.py`'s NUM_DIMENSIONS is 2, then
+`sanity_check.py` tests the model on all 81 possible permutation pairs.
 
 ## Documentation for supporting files
 ### `custom_functions.py`
@@ -74,20 +84,6 @@ performs both classification and regression).
 
 *CustomLossFunction()*: Deals with both categorical data (distribution family)
 and numerical data (mean and standard deviation).
-
-*CustomLossFunction() notes*: In the loss function, we call `softmax()` on each
-one-hot guess individually to convert it into what looks like a probability
-measure. This gets the loss function working. However, since this
-post-processing is happening only in the loss function and not in the model
-itself, if we ever want to directly read the outputs of the model, then we have
-to also call `softmax()` there too.
-
-We tried doing `softmax()` in `train.py`, but PyTorch said it couldn't figure
-out what the loss function's `backward()` should be. (For context, the gradient
-function `backward()` (which is the partial derivative wrt output), is usually
-calculated automatically.) We may try to put this `softmax()` thing at the end
-of the model itself, perhaps as some sort of pseudo–activation function
-processing the model's output layer.
 
 ### `build_model.py`
 Defines neural network architecture. Uses custom multitask layer defined in
