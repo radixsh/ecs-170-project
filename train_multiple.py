@@ -67,10 +67,10 @@ def pipeline(model, config):
     for epoch in range(config['EPOCHS']):
         logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
         avg_loss = train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
-        logger.info(f"Average loss for epoch {epoch + 1}: {avg_loss}")
+        logger.info(f"Average loss for epoch {epoch + 1}: {avg_loss:.3f}")
 
     end = time.time()
-    logger.info(f"Finished training in {end - start:.2f} seconds")
+    logger.info(f"Finished training in {end - start:.3f} seconds")
 
     return model.state_dict()
 
@@ -93,7 +93,8 @@ def main():
         # Filenames for various models
         dest_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
                                               CONFIG['SAMPLE_SIZE'],
-                                              NUM_DIMENSIONS)
+                                              NUM_DIMENSIONS,
+                                              CONFIG['BATCH_SIZE'],)
 
         # Initialize a new neural net
         input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
@@ -120,11 +121,11 @@ def main():
 
         train_end = time.time()
         logger.debug(f"Wrote out weights to {dest_filename} "
-                     f"(finished in {train_end - train_start:.2f} seconds)")
+                     f"(finished in {train_end - train_start:.3f} seconds)")
 
     end = time.time()
     logger.info(f"Finished training {len(VALUES)} models in "
-                f"{end - start:.2f} seconds")
+                f"{end - start:.3f} seconds")
 
 if __name__ == "__main__":
     main()

@@ -232,7 +232,7 @@ def classification_png(name, x_values, metrics):
         plt.scatter(x_values, metrics, color="royalblue", label="Accuracy")
         slope, intercept = np.polyfit(x_values, metrics, deg=1)
         trend = slope * x_values + intercept
-        plt.plot(x_values, trend, color="royalblue", label=f"Slope: {slope:.2f}")
+        plt.plot(x_values, trend, color="royalblue", label=f"Slope: {slope:.3f}")
     else:
         # Sort 2D metrics array for other metrics (e.g., F1, Recall, Precision)
         metrics = np.array(metrics)[sorted_indices, :]
@@ -283,7 +283,8 @@ def main():
         # Filename to search for
         model_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
                                               CONFIG['SAMPLE_SIZE'],
-                                              NUM_DIMENSIONS)
+                                              NUM_DIMENSIONS,
+                                              CONFIG['BATCH_SIZE'])
         
         logger.info(f'Analyzing model at {model_filename}...')
 
@@ -305,9 +306,11 @@ def main():
 
         model.load_state_dict(state_dict)
 
-        # Test the model, round to 3 decimal places
-        
+        # Test the model
         test_results = test_model(model)
+
+        # Round to 3 decimal place 
+        # Useful for precision, recall, and f1
 
         decimals = 10 ** 3
         for key, value in test_results.items():
@@ -341,22 +344,22 @@ def main():
         model_end = time.time()
         logger.info(f"{HYPERPARAMETER}={hyperparam_val}"
                     f"\n Regression:"
-                    f"\n\t\t-->  Mean MAE = {mean_mae:.2f}\t  Stddev MAE = {stddev_mae:.2f} "
-                    f"\n\t\t--> Mean MAPE = {mean_mape:.2f}\t Stddev MAPE = {stddev_mape:.2f}"
-                    f"\n\t\t-->   Mean R2 = {mean_r2_score:.2f}\t   Stddev R2 = {stddev_r2_score:.2f} "
+                    f"\n\t\t-->  Mean MAE = {mean_mae:.3f}\t  Stddev MAE = {stddev_mae:.3f} "
+                    f"\n\t\t--> Mean MAPE = {mean_mape:.3f}\t Stddev MAPE = {stddev_mape:.3f}"
+                    f"\n\t\t-->   Mean R2 = {mean_r2_score:.3f}\t   Stddev R2 = {stddev_r2_score:.3f} "
                     f"\n Classification:"
-                    f"\n\t\t-->         Accuracy = {accuracy}"
-                    f"\n\t\t-->   Mean precision = {mean_precision}"
-                    f"\n\t\t-->      Mean recall = {mean_recall}"
-                    f"\n\t\t-->    Mean F1 score = {mean_f1}"
-                    f"\n\t\t--> Precision scores = {precision}"
-                    f"\n\t\t-->    Recall scores = {recall}"
-                    f"\n\t\t-->        F1 scores = {f1}"
-                    f"\n(Finished in {model_end - model_start:.2f} seconds)"
+                    f"\n\t\t-->         Accuracy = {accuracy:.3f}"
+                    f"\n\t\t-->   Mean precision = {mean_precision:.3f}"
+                    f"\n\t\t-->      Mean recall = {mean_recall:.3f}"
+                    f"\n\t\t-->    Mean F1 score = {mean_f1:.3f}"
+                    f"\n\t\t--> Precision scores = {precision:}"
+                    f"\n\t\t-->    Recall scores = {recall:}"
+                    f"\n\t\t-->        F1 scores = {f1:}"
+                    f"\n(Finished in {model_end - model_start:.3f} seconds)"
         )
 
     end = time.time()
-    logger.info(f"Analyzed {count} models in {end - start:.2f} seconds")
+    logger.info(f"Analyzed {count} models in {end - start:.3f} seconds")
     if count == 0:
         return
 

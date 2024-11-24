@@ -17,18 +17,19 @@ logger.addHandler(console_handler)
 # Formats the filename for a model weight file
 # Format: "weights_train_$TRAIN_SIZE$_sample_$SAMPLE_SIZE$_dims_$NUM_DIMS$"
 # Example: "weights_train_1000_sample_30_dims_2"
-def make_weights_filename(train_size, sample_size, num_dims):
+def make_weights_filename(train_size, sample_size, num_dims, batch_size):
     return (f"models/"
             f"weights_train_{train_size}_"
             f"sample_{sample_size}_"
             f"dims_{num_dims}"
+            f"_batch_{batch_size}"
             f".pth")
 
 # Checks the filename for a model weight file
 # returns a dict of the train size, sample size, and num_dims
 def parse_weights_filename(filename):
     # Define the regex pattern
-    pattern = r"(models/)?weights_train_(\d+)_sample_(\d+)_dims_(\d+).pth"
+    pattern = r"(models/)?weights_train_(\d+)_sample_(\d+)_dims_(\d+)_batch_(\d+).pth"
 
     # Match the pattern with the filename
     match = re.match(pattern, filename)
@@ -38,11 +39,12 @@ def parse_weights_filename(filename):
                          f"trying again.)")
 
     # Extract the values and convert to appropriate types
-    _,train_size, sample_size, num_dims = match.groups()
+    _,train_size, sample_size, num_dims, batch_size = match.groups()
     return {
         "TRAIN_SIZE": int(train_size),
         "SAMPLE_SIZE": int(sample_size),
-        "NUM_DIMS": int(num_dims)
+        "NUM_DIMS": int(num_dims),
+        "BATCH_SIZE": int(batch_size),
     }
 
 # Formats the filename for a dataset

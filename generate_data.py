@@ -101,7 +101,7 @@ def make_dataset(config, mode):
 
     end = time.time()
     logger.info(f"Generated and saved {examples_count} examples out to "
-                f"{filename} in {end - start:.2f} seconds.")
+                f"{filename} in {end - start:.3f} seconds.")
     return dataset
 
 def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
@@ -119,9 +119,9 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
         dataset = make_dataset(config, mode)
 
     if mode == 'TRAIN':
-        dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'])
+        dataloader = DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=True)
     elif mode == 'TEST': # batch size should just be 1 for testing.
-        dataloader = DataLoader(dataset, batch_size=1)
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     return dataloader
 
