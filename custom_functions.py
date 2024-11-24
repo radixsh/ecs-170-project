@@ -82,7 +82,7 @@ def parse_data_filename(filename):
 # Generates the indices for use in our vector format:
 # dists=True gets the onehot portion(s) of the vector
 # mean=True gets the mean(s), stddev=True gets the stddev(s)
-# dims can either be an int or list of ints, 
+# dims can either be an int or list of ints,
 #   indicates which dimension (distribution-wise) the indices are for
 #   gets every dimension available by default
 # mode indicates whether different sets of indices
@@ -99,7 +99,7 @@ def parse_data_filename(filename):
 #   -> [[1,0,0,0,0,0,0,0,0],
 #       [0,1,0,0,0,0,0,0,0]]
 
-def get_indices(dists=False, mean=False, stddev=False, 
+def get_indices(dists=False, mean=False, stddev=False,
                 dims=range(1,NUM_DIMENSIONS+1)):
     num_dists = len(DISTRIBUTIONS)
     if isinstance(dims,int):
@@ -107,7 +107,7 @@ def get_indices(dists=False, mean=False, stddev=False,
     out = []
     for dim in dims:
         if dists:
-            onehot_range = range((dim - 1) * (num_dists + 2), 
+            onehot_range = range((dim - 1) * (num_dists + 2),
                                  (dim - 1) * (num_dists + 2) + num_dists)
             out += onehot_range
         if mean:
@@ -277,7 +277,7 @@ class Distribution:
             # We want a random value in (0, mean - mean^2)
             upper_bound = math.sqrt(self.mean * (1 - self.mean))
             return random_in_open_interval * upper_bound
-        
+
         # Rayleigh
         else:
             weird_constant = math.sqrt((4 / math.pi)  - 1)
@@ -297,7 +297,6 @@ class Beta(Distribution):
         return rng.beta(self.alpha, self.beta, sample_size)
 
     def pdf(self, x):
-        print(self.mean)
         return sps.beta.pdf(x, self.alpha, self.beta)
 
 class Gamma(Distribution):
