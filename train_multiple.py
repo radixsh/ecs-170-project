@@ -86,12 +86,15 @@ def main():
         # Update TRAINING_SIZE in the dict from env.py
         CONFIG[HYPERPARAMETER] = value
 
+        """
+        oops, this is still being investigated...
         # Show a warning if BATCH_SIZE and TRAIN_SIZE does not allow for at
         # least 1000 gradient descent steps
         if CONFIG['TRAIN_SIZE'] / CONFIG['BATCH_SIZE'] < 1000:
             logger.warning(f"BATCH_SIZE {CONFIG['BATCH_SIZE']} is too small "
                            f"for TRAIN_SIZE {CONFIG['TRAIN_SIZE']}. Increase "
                            f"TRAIN_SIZE or reduce BATCH_SIZE.")
+        """
 
         # Filenames for various models
         dest_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
