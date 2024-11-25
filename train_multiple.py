@@ -86,16 +86,6 @@ def main():
         # Update TRAINING_SIZE in the dict from env.py
         CONFIG[HYPERPARAMETER] = value
 
-        """
-        oops, this is still being investigated...
-        # Show a warning if BATCH_SIZE and TRAIN_SIZE does not allow for at
-        # least 1000 gradient descent steps
-        if CONFIG['TRAIN_SIZE'] / CONFIG['BATCH_SIZE'] < 1000:
-            logger.warning(f"BATCH_SIZE {CONFIG['BATCH_SIZE']} is too small "
-                           f"for TRAIN_SIZE {CONFIG['TRAIN_SIZE']}. Increase "
-                           f"TRAIN_SIZE or reduce BATCH_SIZE.")
-        """
-
         # Filenames for various models
         dest_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
                                               CONFIG['SAMPLE_SIZE'],
@@ -109,12 +99,10 @@ def main():
 
         # Train a new model, and save its weights out
         trainable_params = sum(param.numel() for param in model.parameters())
+        formatted_config = "\n".join(f"\t{thing}: {CONFIG[thing]}" \
+                for thing in CONFIG)
         logger.info(f"Training a new {NUM_DIMENSIONS}-dimensional model "
-                    f"with these hyperparameters:\n"
-                     f"\tTRAIN_SIZE = {CONFIG['TRAIN_SIZE']}\n"
-                     f"\tSAMPLE_SIZE = {CONFIG['SAMPLE_SIZE']}\n"
-                     f"\tBATCH_SIZE = {CONFIG['BATCH_SIZE']}\n"
-                     f"\tEPOCHS = {CONFIG['EPOCHS']}\n"
+                    f"with these hyperparameters:\n{formatted_config}\n"
                      f"Variable hyperparameter is {HYPERPARAMETER}. "
                      f"Model has {trainable_params} trainable parameters.")
         train_start = time.time()
