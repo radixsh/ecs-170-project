@@ -13,7 +13,7 @@ import warnings
 from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE, VALUES
 from build_model import build_model
 from train_multiple import get_dataloader
-from custom_functions import DISTRIBUTIONS, make_weights_filename, get_indices
+from custom_functions import DISTRIBUTIONS, make_weights_filename, get_indices, CustomLoss
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -43,6 +43,8 @@ def test_model(model):
     test_dataloader = get_dataloader(CONFIG,mode='TEST')
     model.eval()
 
+    loss_function = CustomLoss()
+
     # For storage purposes
     actual_means = []
     actual_stddevs = []
@@ -50,13 +52,23 @@ def test_model(model):
     pred_means = []
     pred_stddevs = []
     pred_dists = []
+    losses = []
 
     with torch.no_grad():
         for data_point, label in test_dataloader:
-            data_point, label = data_point.to(DEVICE).float(), label.to(DEVICE).float()[0]
+            data_point, label = data_point.to(DEVICE).float(), label.to(DEVICE).float()
 
             # Call the model
-            pred = model(data_point)[0]
+            pred = model(data_point)
+
+            # Loss function expects a 3D tensor 
+            loss = loss_function(pred, label)
+            losses.append(loss)
+
+            # Everything else expects fewer dimensions
+            pred = pred[0]
+            label = label[0]
+
 
             # Curr_ refers to current data point
             curr_actual_means = []
@@ -180,6 +192,7 @@ def test_model(model):
         "precision_scores" : np.mean(precision_scores,axis=0),
         "recall_scores": np.mean(recall_scores,axis=0),
         "f1_scores": np.mean(f1_scores,axis=0),
+        "loss": np.mean(losses),
     }
     return out
 
@@ -330,6 +343,7 @@ def main():
         precision = test_results['precision_scores']
         recall = test_results['recall_scores']
         f1 = test_results['f1_scores']
+        loss = test_results['loss']
 
         mean_maes.append(mean_mae)
         mean_mapes.append(mean_mape)
@@ -356,6 +370,8 @@ def main():
                     f"\n\t\t--> Precision scores = {precision:}"
                     f"\n\t\t-->    Recall scores = {recall:}"
                     f"\n\t\t-->        F1 scores = {f1:}"
+                    f"\n Loss:"
+                    f"\n \n\t\t-->          Loss = {loss:.6f}"
                     f"\n(Finished in {model_end - model_start:.3f} seconds)"
         )
 

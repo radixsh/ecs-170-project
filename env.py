@@ -3,7 +3,7 @@ CONFIG = {
         "TEST_SIZE": int(1e4),
         "SAMPLE_SIZE": 30,          # Size of input layer
         "BATCH_SIZE": 1000,         # How many examples to see before performing backpropagation
-        "EPOCHS": 50,               # How many times to repeat the training process per generated dataset
+        "EPOCHS": 60,               # How many times to repeat the training process per generated dataset
         "LEARNING_RATE": 1e-3,      # Learning rate, for optimizer
         }
 

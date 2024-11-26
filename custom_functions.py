@@ -30,7 +30,7 @@ def make_weights_filename(train_size, sample_size, num_dims, batch_size,learning
 # returns a dict of the train size, sample size, and num_dims
 def parse_weights_filename(filename):
     # Define the regex pattern
-    pattern = r"(models/)?weights_train_(\d+)_sample_(\d+)_dims_(\d+)_batch_(\d+)_lrate_(d.d+).pth"
+    pattern = r"(models/)?weights_train_(\d+)_sample_(\d+)_dims_(\d+)_batch_(\d+)_lrate_(\d.\d+).pth"
 
     # Match the pattern with the filename
     match = re.match(pattern, filename)
@@ -146,23 +146,25 @@ class CustomLoss(nn.Module):
         # on the classification task relative to the regression task
         self.alpha = alpha
 
-        # Manually calculated: (total variation distance) / sqrt(2) to normalize between 0 and 1
+        # Manually calculated: (total variation distance) / 2 to normalize between 0 and 1
         # See: https://www.desmos.com/calculator/8h3zthas2q
         # Indexed by DISTRIBUTION_TYPES
         # Each entry is the non-similarity of two distributions
         # If the distributions have different support, use SFP
         # Symmetric about the diagonal (which is all 0s)
-        self.dist_var_matrix = torch.tensor([
-            [0.1111111111111111, 0.057930075279555564, 0.08681502120533333, 0.08253449168377777, 0.09561208326577779, 0.050799639289777786, 0.10406997045022222, 0.05557577632355556, 0.048745651330888894],
-            [0.057930075279555564, 0.1111111111111111, 0.07864087734200001, 0.060734356420222214, 0.06321621206155556, 0.085887385818, 0.05470651109888888, 0.06273752771355556, 0.08599199803222222],
-            [0.08681502120533333, 0.07864087734200001, 0.1111111111111111, 0.08389804967644444, 0.0903702521041111, 0.070451370148, 0.0895872215451111, 0.06587602966288889, 0.06817723370288889],
-            [0.08253449168377777, 0.060734356420222214, 0.08389804967644444, 0.1111111111111111, 0.09654356442355555, 0.05961180821755555, 0.08890760666711112, 0.077198461922, 0.05590634795000001],
-            [0.09561208326577779, 0.06321621206155556, 0.0903702521041111, 0.09654356442355555, 0.1111111111111111, 0.058801521104888885, 0.10257146074811112, 0.06754045752044445, 0.05590461354133333],
-            [0.050799639289777786, 0.085887385818, 0.070451370148, 0.05961180821755555, 0.058801521104888885, 0.1111111111111111, 0.05470651109888888, 0.07293306735022223, 0.10447294336744445],
-            [0.10406997045022222, 0.05470651109888888, 0.0895872215451111, 0.08890760666711112, 0.10257146074811112, 0.05470651109888888, 0.1111111111111111, 0.06061134021111111, 0.052337773638222215],
-            [0.05557577632355556, 0.06273752771355556, 0.06587602966288889, 0.077198461922, 0.06754045752044445, 0.07293306735022223, 0.06061134021111111, 0.1111111111111111, 0.06749338132444443],
-            [0.048745651330888894, 0.08599199803222222, 0.06817723370288889, 0.05590634795000001, 0.05590461354133333, 0.10447294336744445, 0.052337773638222215, 0.06749338132444443, 0.1111111111111111]
-        ])
+        self.dist_var_matrix = torch.tensor(
+            [
+            [0.000000000000, 0.417745159125, 0.244856289392, 0.312347969079, 0.241583904290, 0.543342926707, 0.197677959018, 0.341918323692, 0.474899833799],
+            [0.417745159125, 0.000000000000, 0.204530062964, 0.320595703705, 0.304801271120, 0.236577687892, 0.319215015572, 0.240742048571, 0.159857056760],
+            [0.244856289392, 0.204530062964, 0.000000000000, 0.199295309563, 0.160563313824, 0.377410550468, 0.159081577385, 0.207013618215, 0.276593015009],
+            [0.312347969079, 0.320595703705, 0.199295309563, 0.000000000000, 0.092707299432, 0.465920074026, 0.141302237014, 0.160741267594, 0.351320961466],
+            [0.241583904290, 0.304801271120, 0.160563313824, 0.092707299432, 0.000000000000, 0.456831140580, 0.054346002126, 0.181880008358, 0.351331999175],
+            [0.543342926707, 0.236577687892, 0.377410550468, 0.465920074026, 0.456831140580, 0.000000000000, 0.473182651268, 0.345151833406, 0.141314908512],
+            [0.197677959018, 0.319215015572, 0.159081577385, 0.141302237014, 0.054346002126, 0.473182651268, 0.000000000000, 0.221807767183, 0.374031229321],
+            [0.341918323692, 0.240742048571, 0.207013618215, 0.160741267594, 0.181880008358, 0.345151833406, 0.221807767183, 0.000000000000, 0.258024609950],
+            [0.474899833799, 0.159857056760, 0.276593015009, 0.351320961466, 0.351331999175, 0.141314908512, 0.374031229321, 0.258024609950, 0.000000000000]
+            ]
+        )
 
         # Number of distribution functions
         self.num_dists = len(DISTRIBUTIONS)
@@ -181,9 +183,6 @@ class CustomLoss(nn.Module):
         return weights[0]
 
     def forward(self, pred, y):
-        # Useful constant
-        dim_range = range(1, NUM_DIMENSIONS+1)
-
         # Absolute difference of vectors normalized by number of dimensions
         diff = torch.abs(pred[0] - y[0]) / NUM_DIMENSIONS
 
@@ -199,7 +198,13 @@ class CustomLoss(nn.Module):
         # Need to look up weights in dist_var_matrix
         dist_idxs = get_indices(dists=True)
         weights = self.get_weights(y[0][dist_idxs])
-        classification_loss = torch.dot(diff[dist_idxs], weights)
+            # Divide by two to account for the initial abs call above!!!
+        classification_loss_normal = torch.dot(diff[dist_idxs], weights) / 2
+
+        # Standard denormalization: [0,1] -> [0,oo), we can now compare
+        # We can now compare classification loss to the others
+        # 
+        classification_loss = self.alpha * (1 / (1 - classification_loss_normal) - 1)
 
         # Make various losses trivial if not in use
         if not self.use_mean:
@@ -211,12 +216,12 @@ class CustomLoss(nn.Module):
         if not self.use_dists:
             classification_loss = 0
 
-        # Average numerical loss of mean and stddev loss
-        regression_loss = (mean_loss + stddev_loss) / 2
+        # print(mean_loss)
+        # print(stddev_loss)
+        # print(classification_loss)
 
-        # classification loss of 0 means loss = regression loss
-        # classification loss of 1 means loss -> infinity
-        return (regression_loss + self.alpha * classification_loss) / (1 - classification_loss)
+        # Average all three of our losses
+        return (mean_loss + stddev_loss + classification_loss) / 3
 
 ### SEED THE RNG
 rng = np.random.default_rng()
@@ -332,7 +337,7 @@ class Laplace(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support='R', name='Laplace')
         self.onehot = [0, 0, 0, 1, 0, 0, 0, 0, 0]
-        self.scale = self.stddev * math.sqrt(2)
+        self.scale = self.stddev / math.sqrt(2)
 
     def rng(self, sample_size):
         return rng.laplace(self.mean, self.scale, sample_size)
@@ -356,7 +361,6 @@ class Lognormal(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support='R+', name='Lognormal')
         self.onehot = [0, 0, 0, 0, 0, 1, 0, 0, 0]
-        # TODO: CHECK THIS MATH
         self.shape = math.sqrt(math.log(1 + (self.stddev / self.mean) ** 2))
         self.loc = math.log((self.mean ** 2) / math.sqrt((self.mean ** 2) + (self.stddev ** 2)))
 
