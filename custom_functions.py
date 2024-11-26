@@ -57,7 +57,7 @@ def make_data_filename(mode, length, sample_size, num_dims):
             f"dataset_{mode}_"
             f"len_{length}_"
             f"sample_{sample_size}_"
-            f"dims_{num_dims}_"
+            f"dims_{num_dims}"
             f".pth")
 
 # Checks the filename for a dataset
