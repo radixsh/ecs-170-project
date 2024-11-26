@@ -56,19 +56,14 @@ def test_model(model):
 
     with torch.no_grad():
         for data_point, label in test_dataloader:
-            data_point, label = data_point.to(DEVICE).float(), label.to(DEVICE).float()
+            data_point, label = data_point.to(DEVICE).float(), label.to(DEVICE).float()[0]
 
             # Call the model
-            pred = model(data_point)
+            pred = model(data_point)[0]
 
             # Loss function expects a 3D tensor 
             loss = loss_function(pred, label)
             losses.append(loss)
-
-            # Everything else expects fewer dimensions
-            pred = pred[0]
-            label = label[0]
-
 
             # Curr_ refers to current data point
             curr_actual_means = []

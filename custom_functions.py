@@ -146,45 +146,12 @@ class CustomLoss(nn.Module):
         # on the classification task relative to the regression task
         self.alpha = alpha
 
-        # Manually calculated: (total variation distance) / 2 to normalize between 0 and 1
-        # See: https://www.desmos.com/calculator/8h3zthas2q
-        # Indexed by DISTRIBUTION_TYPES
-        # Each entry is the non-similarity of two distributions
-        # If the distributions have different support, use SFP
-        # Symmetric about the diagonal (which is all 0s)
-        self.dist_var_matrix = torch.tensor(
-            [
-            [0.000000000000, 0.417745159125, 0.244856289392, 0.312347969079, 0.241583904290, 0.543342926707, 0.197677959018, 0.341918323692, 0.474899833799],
-            [0.417745159125, 0.000000000000, 0.204530062964, 0.320595703705, 0.304801271120, 0.236577687892, 0.319215015572, 0.240742048571, 0.159857056760],
-            [0.244856289392, 0.204530062964, 0.000000000000, 0.199295309563, 0.160563313824, 0.377410550468, 0.159081577385, 0.207013618215, 0.276593015009],
-            [0.312347969079, 0.320595703705, 0.199295309563, 0.000000000000, 0.092707299432, 0.465920074026, 0.141302237014, 0.160741267594, 0.351320961466],
-            [0.241583904290, 0.304801271120, 0.160563313824, 0.092707299432, 0.000000000000, 0.456831140580, 0.054346002126, 0.181880008358, 0.351331999175],
-            [0.543342926707, 0.236577687892, 0.377410550468, 0.465920074026, 0.456831140580, 0.000000000000, 0.473182651268, 0.345151833406, 0.141314908512],
-            [0.197677959018, 0.319215015572, 0.159081577385, 0.141302237014, 0.054346002126, 0.473182651268, 0.000000000000, 0.221807767183, 0.374031229321],
-            [0.341918323692, 0.240742048571, 0.207013618215, 0.160741267594, 0.181880008358, 0.345151833406, 0.221807767183, 0.000000000000, 0.258024609950],
-            [0.474899833799, 0.159857056760, 0.276593015009, 0.351320961466, 0.351331999175, 0.141314908512, 0.374031229321, 0.258024609950, 0.000000000000]
-            ]
-        )
-
         # Number of distribution functions
         self.num_dists = len(DISTRIBUTIONS)
 
-    def get_weights(self, catted_1hot):
-        weights = torch.empty(0)
-        # Loop through each dimension
-        for n in range(1, NUM_DIMENSIONS+1):
-            # Slice up the input vector to just look at the current dimension
-            curr = catted_1hot[(n-1) * self.num_dists:n * self.num_dists]
-            # Look up the appropriate row in the dist var matrix
-            #curr_weights = self.dist_var_matrix[torch.argmax(curr)]
-            curr_weights = self.dist_var_matrix[(curr == 1).nonzero(as_tuple=True)[0]]
-            # append
-            weights = torch.cat((weights, curr_weights), 1)
-        return weights[0]
-
     def forward(self, pred, y):
         # Absolute difference of vectors normalized by number of dimensions
-        diff = torch.abs(pred[0] - y[0]) / NUM_DIMENSIONS
+        diff = torch.abs(pred - y) / NUM_DIMENSIONS
 
         # Calculate MAE on means per dimension
         mean_idxs = get_indices(mean=True)
@@ -197,31 +164,34 @@ class CustomLoss(nn.Module):
         # Approximate total variation distance between distributions
         # Need to look up weights in dist_var_matrix
         dist_idxs = get_indices(dists=True)
-        weights = self.get_weights(y[0][dist_idxs])
-            # Divide by two to account for the initial abs call above!!!
-        classification_loss_normal = torch.dot(diff[dist_idxs], weights) / 2
+        #weights = self.get_weights(y[0][dist_idxs])
+        #weights = 1 - y[dist_idxs]
+        
+        #classification_loss_normal = torch.dot(diff[dist_idxs], weights) / 2
+            # Normalize from the abs diff call above
+            # Need weird constant to keep the denormalization in check and cap it
+            # 10/11 = 0.909090...
+            # -> Currently softcapped at 10, doesn't really matter
+        classification_loss_normal = 0.9091 * torch.sum(diff[dist_idxs]) / 2
+
 
         # Standard denormalization: [0,1] -> [0,oo), we can now compare
         # We can now compare classification loss to the others
-        # 
-        classification_loss = self.alpha * (1 / (1 - classification_loss_normal) - 1)
+        classification_loss = self.alpha * ((1 / (1 - classification_loss_normal)) - 1)
+
 
         # Make various losses trivial if not in use
         if not self.use_mean:
             mean_loss = 0
-            stddev_loss *= 2
         if not self.use_stddev:
             stddev_loss = 0
-            mean_loss *= 2
         if not self.use_dists:
             classification_loss = 0
 
-        # print(mean_loss)
-        # print(stddev_loss)
-        # print(classification_loss)
+        params_in_use = int(self.use_mean + self.use_stddev + self.use_dists)
 
-        # Average all three of our losses
-        return (mean_loss + stddev_loss + classification_loss) / 3
+        # Sum the losses, normalize by number of params being used
+        return (mean_loss + stddev_loss + classification_loss) / params_in_use
 
 ### SEED THE RNG
 rng = np.random.default_rng()

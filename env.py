@@ -8,7 +8,7 @@ CONFIG = {
         }
 
 HYPERPARAMETER = "LEARNING_RATE"
-VALUES = [1e-3]
+VALUES = [1e-2]
 
 DEVICE = (
         # "cuda"        # Use with large networks and good GPU; requires special torch install

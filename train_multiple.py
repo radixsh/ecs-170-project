@@ -5,6 +5,7 @@ import os
 from torch.utils.data import Dataset
 import numpy as np
 from sklearn.metrics import r2_score, accuracy_score
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from env import DEVICE, CONFIG, HYPERPARAMETER, VALUES, NUM_DIMENSIONS
 from build_model import build_model
@@ -28,13 +29,13 @@ def train_model(dataloader, model, loss_function, optimizer, device):
     pred_dists = []
 
     for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device).float(), y.to(device).float()
+        X, y = X.to(device).float(), y.to(device).float()[0]
 
-        pred = model(X)             # Forward pass
+        pred = model(X)[0]             # Forward pass
         loss = loss_function(pred, y)     # Compute loss (prediction error)
 
-        pred = (pred[0]).detach().numpy()
-        label = (y[0]).detach().numpy()
+        pred = pred.detach().numpy()
+        label = y.detach().numpy()
 
         # Curr_ refers to current data point
         curr_actual_means = []
@@ -124,10 +125,15 @@ def pipeline(model, config):
 
     # Optimizer can't be in the config dict because it depends on model params
     optimizer = torch.optim.SGD(model.parameters(),
-                                lr=config['LEARNING_RATE'], foreach=True)
+                                lr=config['LEARNING_RATE'], 
+                                foreach=True,
+                                momentum=0.5)
     # optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, foreach=True)
     # optimizer = torch.optim.Adamw(model.parameters(), lr=LEARNING_RATE, foreach=True)
     # optimizer = torch.optim.Adagrad(model.parameters(), lr=LEARNING_RATE, foreach=True)
+
+    # Scheduler
+    scheduler = CosineAnnealingLR(optimizer, T_max=config['EPOCHS'], eta_min=1e-4)
 
     # Loss function can't be in config dict because custom_loss_function.py
     # depends on config dict to build the loss function
@@ -147,6 +153,8 @@ def pipeline(model, config):
                     f"\n\t--> Stddev R2: {test_results['stddev_r2_score']:.6f}"
                     f"\n\t-->  Accuracy: {test_results['accuracy']:.6f}"
                     )
+        print(f"Epoch {epoch}: Learning rate = {optimizer.param_groups[0]['lr']}")
+        scheduler.step()
 
     end = time.time()
     logger.info(f"Finished training in {end - start:.3f} seconds")
