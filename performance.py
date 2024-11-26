@@ -284,7 +284,8 @@ def main():
         model_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
                                               CONFIG['SAMPLE_SIZE'],
                                               NUM_DIMENSIONS,
-                                              CONFIG['BATCH_SIZE'])
+                                              CONFIG['BATCH_SIZE'],
+                                              CONFIG['LEARNING_RATE'])
         
         logger.info(f'Analyzing model at {model_filename}...')
 

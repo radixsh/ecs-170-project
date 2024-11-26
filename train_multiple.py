@@ -25,11 +25,10 @@ def train_model(dataloader, model, loss_function, optimizer, device):
 
         pred = model(X)             # Forward pass
         loss = loss_function(pred, y)     # Compute loss (prediction error)
+        optimizer.zero_grad()
         loss.backward()             # Backpropagation
         optimizer.step()
-        optimizer.zero_grad()
-
-        # if batch % 100 == 0:
+        
         loss_value = loss.item()
         losses.append(loss_value)
         current = batch * dataloader.batch_size + len(X)#(batch + 1) * len(X)
@@ -90,7 +89,8 @@ def main():
         dest_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
                                               CONFIG['SAMPLE_SIZE'],
                                               NUM_DIMENSIONS,
-                                              CONFIG['BATCH_SIZE'],)
+                                              CONFIG['BATCH_SIZE'],
+                                              CONFIG['LEARNING_RATE'])
 
         # Initialize a new neural net
         input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
