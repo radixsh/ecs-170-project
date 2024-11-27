@@ -10,18 +10,19 @@ def initialize_weights(module):
 
 
 def build_model(input_size, output_size):
+    hidden_layers = [90, 180, 90, 60]
     model = nn.Sequential(
         # Don't bias the first layer, destroys mean calculations
-        nn.Linear(in_features=input_size, out_features=30,bias=False),
+        nn.Linear(in_features=input_size, out_features=hidden_layers[0],bias=False),
         nn.ReLU(),
-        nn.Linear(in_features=30, out_features=30),
+        nn.Linear(in_features=hidden_layers[0], out_features=hidden_layers[1]),
         nn.ReLU(),
-        nn.Linear(in_features=30, out_features=30),
+        nn.Linear(in_features=hidden_layers[1], out_features=hidden_layers[2]),
         nn.ReLU(),
-        nn.Linear(in_features=30, out_features=30),
+        nn.Linear(in_features=hidden_layers[2], out_features=hidden_layers[3]),
         nn.ReLU(),
-        nn.Linear(in_features=30, out_features=output_size),
-        # custom activation function, softmaxes ONLY the vector portions
+        nn.Linear(in_features=hidden_layers[3], out_features=output_size),
+        # Custom activation function, softmaxes ONLY the vector portions
         Multitask()
         )
     

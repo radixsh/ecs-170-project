@@ -109,7 +109,7 @@ def get_dataloader(config, mode='TRAIN'): #mode should be 'TRAIN' or 'TEST'
 
     if good_filename:
         logger.info(f"Using data from {good_filename}")
-        dataset = torch.load(good_filename)
+        dataset = torch.load(good_filename, weights_only=False)
         if parse_data_filename(good_filename)['LENGTH'] != config[f'{mode}_SIZE']:
             logger.debug(f"Taking the first {config[f'{mode}_SIZE']} entries")
             dataset = Subset(dataset, indices=range(config[f'{mode}_SIZE']))

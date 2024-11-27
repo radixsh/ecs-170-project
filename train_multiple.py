@@ -67,14 +67,14 @@ def train_model(dataloader, model, loss_function, optimizer, device):
             curr_pred_stddevs.append(dim_pred_stddevs)
             curr_pred_dists.append(dim_pred_dists)
             
-            # Store them for processing
-            actual_means.append(curr_actual_means)
-            actual_stddevs.append(curr_actual_stddevs)
-            actual_dists.append(curr_actual_dists)
-            pred_means.append(curr_pred_means)
-            pred_stddevs.append(curr_pred_stddevs)
-            pred_dists.append(curr_pred_dists)
-        
+        # Store them for processing
+        actual_means.append(curr_actual_means)
+        actual_stddevs.append(curr_actual_stddevs)
+        actual_dists.append(curr_actual_dists)
+        pred_means.append(curr_pred_means)
+        pred_stddevs.append(curr_pred_stddevs)
+        pred_dists.append(curr_pred_dists)
+    
         loss_value = loss.item()
         losses.append(loss_value)
 
