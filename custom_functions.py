@@ -64,7 +64,7 @@ def make_data_filename(mode, length, sample_size, num_dims):
 # returns a dict of the type, length, sample size, and num_dims
 def parse_data_filename(filename):
     # Define the regex pattern
-    pattern = r"(data/)?dataset_(TRAIN|TEST)_len_(\d+)_sample_(\d+)_dims_(\d+).pth"
+    pattern = r"(data\\|data/)?dataset_(TRAIN|TEST)_len_(\d+)_sample_(\d+)_dims_(\d+).pth"
 
     # Match the pattern with the filename
     match = re.match(pattern, filename)
