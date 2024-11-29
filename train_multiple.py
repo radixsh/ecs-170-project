@@ -5,17 +5,19 @@ import os
 from torch.utils.data import Dataset
 import numpy as np
 from sklearn.metrics import r2_score, accuracy_score
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import SequentialLR, CosineAnnealingLR, LambdaLR
 from collections import defaultdict
+import warnings
 
 from env import *
 from custom_functions import *
-from generate_data import get_dataloader, MyDataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
+
+warnings.simplefilter('ignore', UserWarning) # Silence bugged pytorch lr scheduler warning
 
 def train_model(dataloader, model, loss_function, optimizer, device):
     model.train()
@@ -68,16 +70,21 @@ def pipeline(model, config):
         torch.cuda.manual_seed(42)
 
     # Optimizer can't be in the config dict because it depends on model params
-    optimizer = torch.optim.SGD(model.parameters(),
+    optimizer = torch.optim.Adam(model.parameters(),
                                 lr=config['LEARNING_RATE'], 
                                 foreach=True,
-                                momentum=0.5)
+                                #momentum=0.5
+                                )
     # optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, foreach=True)
     # optimizer = torch.optim.Adamw(model.parameters(), lr=LEARNING_RATE, foreach=True)
     # optimizer = torch.optim.Adagrad(model.parameters(), lr=LEARNING_RATE, foreach=True)
 
-    # Scheduler
-    scheduler = CosineAnnealingLR(optimizer, T_max=config['EPOCHS'], eta_min=1e-4)
+    
+    # Learning rate scheduler: linearly increase for first 5 epochs, then slowly decay
+    warmup_epochs = 5
+    warmup_scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: (epoch + 1) / warmup_epochs)
+    cosine_scheduler = CosineAnnealingLR(optimizer, T_max=(CONFIG['EPOCHS'] - warmup_epochs), eta_min=1e-4)
+    scheduler = SequentialLR(optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[warmup_epochs])
 
     # Loss function can't be in config dict because custom_loss_function.py
     # depends on config dict to build the loss function
@@ -89,15 +96,15 @@ def pipeline(model, config):
                 f"{config[HYPERPARAMETER]}...")
 
     for epoch in range(config['EPOCHS']):
-        logger.debug(f"\nEpoch {epoch + 1}\n-------------------------------")
+        logger.info(f"\nEpoch {epoch + 1}\n-------------------------------")
         test_results = train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
-        logger.info(f"Metrics for epoch {epoch + 1}:"
+        logger.info(f"Learning rate = {optimizer.param_groups[0]['lr']:.6f}"
+                    f"\nMetrics:"
                     f"\n\t-->      Loss: {test_results['loss']:.6f}"
                     f"\n\t-->   Mean R2: {test_results['mean_r2']:.6f}"
                     f"\n\t--> Stddev R2: {test_results['stddev_r2']:.6f}"
                     f"\n\t-->  Accuracy: {test_results['accuracy']:.6f}"
                     )
-        print(f"Epoch {epoch}: Learning rate = {optimizer.param_groups[0]['lr']}")
         scheduler.step()
 
     end = time.time()

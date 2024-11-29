@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 from pprint import pformat
 
 from env import *
-from generate_data import DISTRIBUTIONS, MyDataset
 from custom_functions import *
 
 logger = logging.getLogger(__name__)
