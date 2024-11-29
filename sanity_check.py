@@ -6,10 +6,9 @@ import numpy as np
 from torch.utils.data import DataLoader
 from pprint import pformat
 
-from env import CONFIG, NUM_DIMENSIONS, DEVICE
+from env import *
 from generate_data import DISTRIBUTIONS, MyDataset
-from custom_functions import parse_weights_filename, get_indices
-from build_model import build_model
+from custom_functions import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -110,6 +109,21 @@ def list_to_tuple(points):
             dim2.append(value)
     return (dim1, dim2)
 
+def get_dist_objects_dict(predictions):
+    dist_objs = []
+    for i in range(CONFIG['NUM_DIMENSIONS']):
+        onehot = predictions['classification'][i]
+        dist_idx = torch.argmax(onehot).item()
+        dist_class = list(DISTRIBUTIONS.values())[dist_idx]
+
+        mean = predictions['mean'][i].item()
+        stddev = predictions['stddev'][i].item()
+
+        myobj = dist_class(mean, stddev)
+        dist_objs.append(myobj)
+
+    return dist_objs
+
 def get_dist_objects(labels):
     """
     Converts a list of labels into a list of Distribution instances.
@@ -119,22 +133,27 @@ def get_dist_objects(labels):
         Output: [Gamma(mean=3.14, stddev=0.42),
                  Gumbel(mean=2.71, stddev=0.62)]
     """
+    if isinstance(labels, dict):
+        return get_dist_objects_dict(labels)
+    
     dist_objs = []
-    for i in range(1, NUM_DIMENSIONS + 1):
-        dist_indices = get_indices(dists=True, dims=i)
+    for i in range(1, CONFIG['NUM_DIMENSIONS'] + 1):
+        dist_indices = get_indices(dists=True, dim=i)
         onehot = labels[dist_indices]
         dist_idx = torch.argmax(onehot).item()
         dist_class = list(DISTRIBUTIONS.values())[dist_idx]
 
-        mean_idx = get_indices(mean=True, dims=i)
+        mean_idx = get_indices(mean=True, dim=i)
         mean = labels[mean_idx].item()
 
-        stddev_idx = get_indices(stddev=True, dims=i)
+        stddev_idx = get_indices(stddev=True, dim=i)
         stddev = labels[stddev_idx].item()
 
         myobj = dist_class(mean, stddev)
         dist_objs.append(myobj)
+
     return dist_objs
+
 
 def test_1d(model, dataloader):
     """
@@ -147,7 +166,8 @@ def test_1d(model, dataloader):
             points, labels = points.to(DEVICE).float(), labels.to(DEVICE).float()
 
             # The first item is the only item because batch_size=1 for testing
-            guesses = model(points)[0]
+            guesses = model(points)
+            print(guesses)
             points = points[0]
             labels = labels[0]
 
@@ -270,14 +290,10 @@ def test_2d(model, dataloader):
 
 def model_setup():
     filename = sys.argv[1]
-    weights_info = parse_weights_filename(filename)
-
-    # Build the model
-    input_size = weights_info['SAMPLE_SIZE'] * weights_info['NUM_DIMS']
-    output_size = (len(DISTRIBUTIONS) + 2) * NUM_DIMENSIONS
-    model = build_model(input_size, output_size).to(DEVICE)
+    config = parse_weights_filename(filename)
 
     # Load the model's weights
+    model = MultiTaskModel(config, MODEL_ARCHITECTURE, len(DISTRIBUTIONS)).to(DEVICE)
     state_dict = torch.load(filename)
     if state_dict is None:
         logger.debug("State dict is illegible! Quitting")
@@ -296,14 +312,14 @@ def main():
     model = model_setup()
     model.eval()
 
-    if NUM_DIMENSIONS == 1:
+    if CONFIG['NUM_DIMENSIONS'] == 1:
         dataloader = generate_1d()
         test_1d(model, dataloader)
-    elif NUM_DIMENSIONS == 2:
+    elif CONFIG['NUM_DIMENSIONS'] == 2:
         dataloader = generate_2d()
         test_2d(model, dataloader)
     else:
-        logger.warning(f"{NUM_DIMENSIONS} dimensions is not supported, exiting")
+        logger.warning(f"{CONFIG['NUM_DIMENSIONS']} dimensions is not supported, exiting")
         sys.exit(0)
 
 if __name__ == "__main__":

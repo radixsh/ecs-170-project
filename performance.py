@@ -5,15 +5,13 @@ import logging
 import time
 import torch
 import os
-import re
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, accuracy_score, f1_score, recall_score, precision_score
 from torch.utils.data import DataLoader
 import warnings
+from collections import defaultdict
 
-from env import CONFIG, HYPERPARAMETER, NUM_DIMENSIONS, DEVICE, VALUES
-from build_model import build_model
+from env import *
 from train_multiple import get_dataloader
-from custom_functions import DISTRIBUTIONS, make_weights_filename, get_indices, CustomLoss
+from custom_functions import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -43,153 +41,42 @@ def test_model(model):
     test_dataloader = get_dataloader(CONFIG,mode='TEST')
     model.eval()
 
-    loss_function = CustomLoss()
+    loss_function = CustomLoss(num_dimensions=CONFIG['NUM_DIMENSIONS'])
+    metrics = defaultdict(list)
 
-    # For storage purposes
-    actual_means = []
-    actual_stddevs = []
-    actual_dists = []
-    pred_means = []
-    pred_stddevs = []
-    pred_dists = []
     losses = []
 
     with torch.no_grad():
-        for data_point, label in test_dataloader:
-            data_point, label = data_point.to(DEVICE).float(), label.to(DEVICE).float()[0]
+        for X, y in test_dataloader:
+            X, y = X.to(DEVICE).float(), y.to(DEVICE).float()
 
-            # Call the model
-            pred = model(data_point)[0]
+            pred = model(X)
+            loss = loss_function(pred, y)
+            losses.append(loss.item())
 
-            # Loss function expects a 3D tensor 
-            loss = loss_function(pred, label)
-            losses.append(loss)
-
-            # Curr_ refers to current data point
-            curr_actual_means = []
-            curr_actual_stddevs = []
-            curr_actual_dists = []
-            curr_pred_means = []
-            curr_pred_stddevs = []
-            curr_pred_dists = []
-
-            # Go through each dimension
-            for dim in range(1, NUM_DIMENSIONS+1):
-                # Acquire appropiate indices for features
-                dim_mean_idxs = get_indices(mean=True, dims=dim)
-                dim_stddev_idxs = get_indices(stddev=True,dims=dim)
-                dim_dist_idxs = get_indices(dists=True, dims=dim)
-
-                # Get the specified values; dim_ refers to current dimensions
-                dim_actual_means = label[dim_mean_idxs]
-                dim_actual_stddevs = label[dim_stddev_idxs]
-                #dim_actual_dists = label[dim_dist_idxs]
-                dim_actual_dists = np.argmax(label[dim_dist_idxs],keepdims=True)
-                dim_pred_means = pred[dim_mean_idxs]
-                dim_pred_stddevs = pred[dim_stddev_idxs]
-                #dim_pred_dists = pred[dim_dist_idxs]
-                dim_pred_dists = np.argmax(pred[dim_dist_idxs],keepdims=True)
-
-                curr_actual_means.append(dim_actual_means)
-                curr_actual_stddevs.append(dim_actual_stddevs)
-                curr_actual_dists.append(dim_actual_dists)
-                curr_pred_means.append(dim_pred_means)
-                curr_pred_stddevs.append(dim_pred_stddevs)
-                curr_pred_dists.append(dim_pred_dists)
+            test_metrics = calculate_metrics(pred, y, CONFIG['NUM_DIMENSIONS'], mode='TEST')
             
-            # Store them for processing
-            actual_means.append(curr_actual_means)
-            actual_stddevs.append(curr_actual_stddevs)
-            actual_dists.append(curr_actual_dists)
-            pred_means.append(curr_pred_means)
-            pred_stddevs.append(curr_pred_stddevs)
-            pred_dists.append(curr_pred_dists)
+            # Aggregate batch metrics
+            # This is why we kept losses separate
+            for key, value in test_metrics.items():
+                metrics[key].append(value)
 
+    # Add on the loss
+    metrics['loss'] = losses
 
-    # actual_stuff now looks like:
-    # [[x1_dim1_stuff, x1_dim2_stuff, ...],
-    #  [x2_dim2_stuff, x2_dim2_stuff, ...],
-    #  ...]
-    # We want something for the form:
-    # [[x1_dim1_stuff, x2_dim1_stuff, ...],
-    #  [x1_dim2_stuff, x2_dim2_stuff, ...],
-    #  ...]
-    actual_means = np.transpose(actual_means)[0]
-    actual_stddevs = np.transpose(actual_stddevs)[0]
-    actual_dists = np.transpose(actual_dists)[0]
-    pred_means = np.transpose(pred_means)[0]
-    pred_stddevs = np.transpose(pred_stddevs)[0]
-    pred_dists = np.transpose(pred_dists)[0]
+    # Average across the dataset, but need to handle extra classification
+    # Definitely a little kludgey but fast enough
+    precision = metrics['precision']
+    recall = metrics['recall']
+    f1 = metrics['f1']
 
-    mean_maes = []
-    mean_mapes = []
-    mean_r2_scores = []
-    stddev_maes = []
-    stddev_mapes = []
-    stddev_r2_scores = []
-    accuracy_scores = []
-    precision_scores = []
-    recall_scores = []
-    f1_scores = []
+    metrics = {key: np.mean(value) for key, value in metrics.items()}
 
-    # If there's a better way to do this, go ahead
-    # But note that averaging across dimensions first then taking the MAE
-    # is NOT the same as MAE then averaging across dimensions (what this nonsense is doing)
-    # Also don't ask me why all the other ranges are offset and this one isn't
-    for dim in range(NUM_DIMENSIONS):
-        curr_mean_mae = mean_absolute_error(actual_means[dim], pred_means[dim])
-        curr_mean_mape = mean_absolute_percentage_error(actual_means[dim], pred_means[dim])
-        curr_mean_r2_score = r2_score(actual_means[dim], pred_means[dim])
-        curr_stddev_mae = mean_absolute_error(actual_stddevs[dim], pred_stddevs[dim])
-        curr_stddev_mape = mean_absolute_percentage_error(actual_stddevs[dim], pred_stddevs[dim])
-        curr_stddev_r2_score = r2_score(actual_stddevs[dim], pred_stddevs[dim])
-        curr_accuracy = accuracy_score(actual_dists[dim],pred_dists[dim])
-        # More complicated...
-        curr_precision = precision_score(actual_dists[dim],
-                                         pred_dists[dim],
-                                         labels=range(len(DISTRIBUTIONS)),
-                                         average=None,
-                                         zero_division=0.0)
-        curr_recall = recall_score(actual_dists[dim],
-                                   pred_dists[dim],
-                                   labels=range(len(DISTRIBUTIONS)),
-                                   average=None,
-                                   zero_division=0.0)
-        curr_f1 = f1_score(actual_dists[dim],
-                           pred_dists[dim],
-                           labels=range(len(DISTRIBUTIONS)),
-                           average=None,
-                           zero_division=0.0)
+    metrics['precision'] = np.mean(precision,axis=0)
+    metrics['recall'] = np.mean(recall,axis=0)
+    metrics['f1'] = np.mean(f1,axis=0)
 
-        mean_maes.append(curr_mean_mae)
-        mean_mapes.append(curr_mean_mape)
-        mean_r2_scores.append(curr_mean_r2_score)
-        stddev_maes.append(curr_stddev_mae)
-        stddev_mapes.append(curr_stddev_mape)
-        stddev_r2_scores.append(curr_stddev_r2_score)
-        accuracy_scores.append(curr_accuracy)
-        precision_scores.append(curr_precision)
-        recall_scores.append(curr_recall)
-        f1_scores.append(curr_f1)
-
-    # Take means across all dimensions
-    out = {
-        "mean_mae": np.mean(mean_maes),
-        "mean_mape": np.mean(mean_mapes),
-        "mean_r2_score": np.mean(mean_r2_scores),
-        "stddev_mae": np.mean(stddev_maes),
-        "stddev_mape": np.mean(stddev_mapes),
-        "stddev_r2_score": np.mean(stddev_r2_scores),
-        "accuracy": np.mean(accuracy_scores),
-        "mean_precision" : np.mean(precision_scores),
-        "mean_recall": np.mean(recall_scores),
-        "mean_f1": np.mean(f1_scores),
-        "precision_scores" : np.mean(precision_scores,axis=0),
-        "recall_scores": np.mean(recall_scores,axis=0),
-        "f1_scores": np.mean(f1_scores,axis=0),
-        "loss": np.mean(losses),
-    }
-    return out
+    return metrics
 
 # regression pngs
 def regression_png(name, x_values, means, stddevs):
@@ -270,17 +157,9 @@ def main():
     models_directory = 'models'
     os.makedirs(models_directory, exist_ok=True)
 
-    mean_maes = []
-    stddev_maes = []
-    mean_mapes = []
-    stddev_mapes = []
-    mean_r2_scores = []
-    stddev_r2_scores = []
+    metrics = defaultdict(list)
+
     hyperparams = []       # For matplotlib graphs
-    accuracies = []
-    f1s = []
-    recalls = []
-    precisions = []
     count = 0
 
     for hyperparam_val in VALUES:
@@ -289,11 +168,7 @@ def main():
         CONFIG[HYPERPARAMETER] = hyperparam_val
         
         # Filename to search for
-        model_filename = make_weights_filename(CONFIG['TRAIN_SIZE'],
-                                              CONFIG['SAMPLE_SIZE'],
-                                              NUM_DIMENSIONS,
-                                              CONFIG['BATCH_SIZE'],
-                                              CONFIG['LEARNING_RATE'])
+        model_filename = make_weights_filename(CONFIG)
         
         logger.info(f'Analyzing model at {model_filename}...')
 
@@ -306,13 +181,9 @@ def main():
 
         model_start = time.time()              # For timing
         hyperparams.append(hyperparam_val)     # For matplotlib graphs
-        count += 1                             # For debug
-        
-        # Reinitialize
-        input_size = CONFIG['SAMPLE_SIZE'] * NUM_DIMENSIONS
-        output_size = (len(DISTRIBUTIONS) + 2) * NUM_DIMENSIONS
-        model = build_model(input_size, output_size).to(DEVICE)
 
+        # Reinitialize
+        model = MultiTaskModel(CONFIG, MODEL_ARCHITECTURE, len(DISTRIBUTIONS)).to(DEVICE)
         model.load_state_dict(state_dict)
 
         # Test the model
@@ -320,55 +191,34 @@ def main():
 
         # Round to 3 decimal place 
         # Useful for precision, recall, and f1
-
         decimals = 10 ** 3
         for key, value in test_results.items():
             test_results[key] = np.trunc(decimals * value) / decimals
 
-        mean_mae = test_results['mean_mae']
-        mean_mape = test_results['mean_mape']
-        mean_r2_score = test_results['mean_r2_score']
-        stddev_mae = test_results['stddev_mae']
-        stddev_mape = test_results['stddev_mape']
-        stddev_r2_score = test_results['stddev_r2_score']
-        accuracy = test_results['accuracy']
-        mean_precision = test_results['mean_precision']
-        mean_recall = test_results['mean_recall']
-        mean_f1 = test_results['mean_f1']
-        precision = test_results['precision_scores']
-        recall = test_results['recall_scores']
-        f1 = test_results['f1_scores']
-        loss = test_results['loss']
-
-        mean_maes.append(mean_mae)
-        mean_mapes.append(mean_mape)
-        mean_r2_scores.append(mean_r2_score)
-        stddev_maes.append(stddev_mae)
-        stddev_mapes.append(stddev_mape)
-        stddev_r2_scores.append(stddev_r2_score)
-        accuracies.append(accuracy)
-        precisions.append(precision)
-        recalls.append(recall)
-        f1s.append(f1)
+        # Save the test results in metrics
+        for key,value in test_results.items():
+            metrics[key].append(value)
         
         model_end = time.time()
         logger.info(f"{HYPERPARAMETER}={hyperparam_val}"
                     f"\n Regression:"
-                    f"\n\t\t-->  Mean MAE = {mean_mae:.3f}\t  Stddev MAE = {stddev_mae:.3f} "
-                    f"\n\t\t--> Mean MAPE = {mean_mape:.3f}\t Stddev MAPE = {stddev_mape:.3f}"
-                    f"\n\t\t-->   Mean R2 = {mean_r2_score:.3f}\t   Stddev R2 = {stddev_r2_score:.3f} "
+                    f"\n\t\t-->  Mean MAE = {metrics['mean_mae'][count]:.3f}\t  Stddev MAE = {metrics['stddev_mae'][count]:.3f} "
+                    f"\n\t\t--> Mean MAPE = {metrics['mean_mape'][count]:.3f}\t Stddev MAPE = {metrics['stddev_mape'][count]:.3f}"
+                    f"\n\t\t--> Mean RMSE = {metrics['mean_rmse'][count]:.3f}\t Stddev RMSE = {metrics['stddev_rmse'][count]:.3f}"
+                    f"\n\t\t-->   Mean R2 = {metrics['mean_r2'][count]:.3f}\t   Stddev R2 = {metrics['stddev_r2'][count]:.3f} "
                     f"\n Classification:"
-                    f"\n\t\t-->         Accuracy = {accuracy:.3f}"
-                    f"\n\t\t-->   Mean precision = {mean_precision:.3f}"
-                    f"\n\t\t-->      Mean recall = {mean_recall:.3f}"
-                    f"\n\t\t-->    Mean F1 score = {mean_f1:.3f}"
-                    f"\n\t\t--> Precision scores = {precision:}"
-                    f"\n\t\t-->    Recall scores = {recall:}"
-                    f"\n\t\t-->        F1 scores = {f1:}"
+                    f"\n\t\t-->         Accuracy = {metrics['accuracy'][count]:.3f}"
+                    f"\n\t\t-->   Mean precision = {metrics['avg_precision'][count]:.3f}"
+                    f"\n\t\t-->      Mean recall = {metrics['avg_recall'][count]:.3f}"
+                    f"\n\t\t-->    Mean F1 score = {metrics['avg_f1'][count]:.3f}"
+                    f"\n\t\t--> Precision scores = {metrics['precision'][count]:}"
+                    f"\n\t\t-->    Recall scores = {metrics['recall'][count]:}"
+                    f"\n\t\t-->        F1 scores = {metrics['f1'][count]:}"
                     f"\n Loss:"
-                    f"\n \n\t\t-->          Loss = {loss:.6f}"
+                    f"\n\t\t-->          Loss = {metrics['loss'][count]:.3f}"
                     f"\n(Finished in {model_end - model_start:.3f} seconds)"
         )
+        count += 1
 
     end = time.time()
     logger.info(f"Analyzed {count} models in {end - start:.3f} seconds")
@@ -376,15 +226,17 @@ def main():
         return
 
     regression_png("MAE (mean average error)",
-               hyperparams, mean_maes, stddev_maes)
+               hyperparams, metrics['mean_mae'], metrics['stddev_mae'])
     regression_png("MAPE (mean average percentage error)",
-               hyperparams, mean_mapes, stddev_mapes)
+               hyperparams, metrics['mean_mape'], metrics['stddev_mape']),
+    regression_png("RMSE (root mean squared error)",
+                hyperparams, metrics['mean_rmse'], metrics['stddev_rmse'])
     regression_png("R^2 (correlation coefficient)",
-               hyperparams, mean_r2_scores, stddev_r2_scores)
-    classification_png("Accuracy", hyperparams, accuracies)
-    classification_png("F1", hyperparams, f1s)
-    classification_png("Recall", hyperparams, recalls)
-    classification_png("Precision", hyperparams, precisions)
+               hyperparams, metrics['mean_r2'], metrics['stddev_r2'])
+    classification_png("Accuracy", hyperparams, metrics['accuracy'])
+    classification_png("F1", hyperparams, metrics['f1'])
+    classification_png("Recall", hyperparams, metrics['recall'])
+    classification_png("Precision", hyperparams, metrics['precision'])
 
 if __name__ == "__main__":
     main()
