@@ -39,7 +39,9 @@ class CustomLoss(Module):
     Loss function for the multi-headed model.
     """
 
-    def __init__(self, use_mean=True, use_stddev=True, use_dists=True, num_dims=-1, num_dists = 9):
+    def __init__(
+        self, use_mean=True, use_stddev=True, use_dists=True, num_dims=-1, num_dists=9
+    ):
         """
         Constructor for loss function class.
 
@@ -134,7 +136,7 @@ class Head(Module):
         super(Head, self).__init__()
         self.layers = ModuleList()
         if len(layer_sizes) == 0:
-            self.layers.append(Linear(input_dim, output_size, bias=False))
+            self.layers.append(Linear(input_dim, output_size))
         else:
             self.layers.append(Linear(input_dim, layer_sizes[0]))
             self.layers.append(activation())
@@ -144,9 +146,7 @@ class Head(Module):
                 self.layers.append(activation())
 
             # Output layer
-            self.layers.append(
-                Linear(layer_sizes[-1], output_size, bias=False)  # Output layer
-            )
+            self.layers.append(Linear(layer_sizes[-1], output_size))
 
         if final_activation:
             self.layers.append(final_activation())
@@ -175,27 +175,27 @@ class MultiTaskModel(Module):
         super(MultiTaskModel, self).__init__()
         self.num_dimensions = config["NUM_DIMENSIONS"]
         self.num_classes = num_classes
-        input_dim = config["SAMPLE_SIZE"] * self.num_dimensions
         self.shared_layer_sizes = architecture["SHARED_LAYER_SIZES"]
         self.stddev_head_layer_sizes = architecture["STDDEV_LAYER_SIZES"]
         self.class_head_layer_sizes = architecture["CLASS_LAYER_SIZES"]
 
-        # Input layer. No bias, since calculating mean should not need it.
-        self.input = Linear(input_dim, input_dim, bias=False)
-
-        # Second set of shared layers, the bulk of the network is created here.
-        self.shared_layers = ModuleList()
-        self.shared_layers.append(Linear(input_dim, self.shared_layer_sizes[0]))
-        self.shared_layers.append(activation())
+        # Shared layers, the bulk of the networks
+        self.backbone = ModuleList()
+        self.backbone.append(
+            Linear(
+                config["SAMPLE_SIZE"] * self.num_dimensions, self.shared_layer_sizes[0]
+            )
+        )
+        self.backbone.append(activation())
         for n in range(len(self.shared_layer_sizes) - 1):
-            self.shared_layers.append(
+            self.backbone.append(
                 Linear(self.shared_layer_sizes[n], self.shared_layer_sizes[n + 1])
             )
-            self.shared_layers.append(activation())
+            self.backbone.append(activation())
 
         # Make a head of each metric for each dimension.
         self.mean_head_array = ModuleList(
-            [Head(input_dim) for _ in range(self.num_dimensions)]
+            [Head(self.shared_layer_sizes[-1]) for _ in range(self.num_dimensions)]
         )
 
         self.stddev_head_array = ModuleList(
@@ -243,10 +243,9 @@ class MultiTaskModel(Module):
             "stddev": torch.zeros(batch_size, self.num_dimensions),
         }
 
-        input = self.input(x)  # First shared -> mean, second shared
-        shared = input  # Second shared -> stddev, classification
-        for layer in self.shared_layers:
-            shared = layer(shared)
+        # Call through the shared layers
+        for layer in self.backbone:
+            x = layer(x)
 
         for n in range(self.num_dimensions):
             # Shape: [batch_size, num_dimensions, num_distributions]
@@ -254,7 +253,7 @@ class MultiTaskModel(Module):
             #   1000 "rows" (one per item in batch), each containing:
             #       a vector of length 2 (one for each dim) containing:
             #           a onehot vector of length 9 (one for each distribution)
-            outputs["classification"][:, n, :] = self.class_head_array[n](shared)
+            outputs["classification"][:, n, :] = self.class_head_array[n](x)
 
             # Shape: [batch_size, num_dimensions]
             # For example, [1000, 2] means:
@@ -262,7 +261,7 @@ class MultiTaskModel(Module):
             #       a vector of length 2 (one for each dim) containing means
             # One less tensor-dimension than class since
             #   means are numbers instead of onehot vectors
-            outputs["mean"][:, n] = self.mean_head_array[n](input).squeeze(-1)
-            outputs["stddev"][:, n] = self.stddev_head_array[n](shared).squeeze(-1)
+            outputs["mean"][:, n] = self.mean_head_array[n](x).squeeze(-1)
+            outputs["stddev"][:, n] = self.stddev_head_array[n](x).squeeze(-1)
 
         return outputs
