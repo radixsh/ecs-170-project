@@ -7,6 +7,7 @@ from torch.optim.lr_scheduler import SequentialLR, CosineAnnealingLR, LambdaLR
 from torch.utils.data import DataLoader
 
 from data_handling import get_dataset
+from distributions import NUM_DISTS
 from metrics import calculate_metrics, display_metrics
 from model import CustomLoss
 
@@ -36,7 +37,7 @@ def run_model(model, config, mode):
         # Use one of the following optimizers: Adam, AdamW, Adamax, NAdam, RMSprop.
         # These use second-order gradient; first-order optimizers like SGD are
         # extremely lethargic for this task and barely do better than chance.
-        optimizer = Adam(
+        optimizer = Adamax(
             model.parameters(),
             lr=config["LEARNING_RATE"],
         )
@@ -68,7 +69,7 @@ def run_model(model, config, mode):
             shuffle=True,
         )
 
-    loss_function = CustomLoss(num_dims=config["NUM_DIMENSIONS"])
+    loss_function = CustomLoss(num_dims=config["NUM_DIMENSIONS"], num_dists=NUM_DISTS)
 
     # Metrics are calculated and displayed at the end of every epoch in training mode.
     # 10% of the data in every epoch is used for to calculate performance. Questionable

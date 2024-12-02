@@ -39,7 +39,7 @@ class CustomLoss(Module):
     Loss function for the multi-headed model.
     """
 
-    def __init__(self, use_mean=True, use_stddev=True, use_dists=True, num_dims=-1):
+    def __init__(self, use_mean=True, use_stddev=True, use_dists=True, num_dims=-1, num_dists = 9):
         """
         Constructor for loss function class.
 
@@ -57,6 +57,7 @@ class CustomLoss(Module):
         self.use_stddev = use_stddev
         self.use_dists = use_dists
         self.num_dims = num_dims
+        self.num_dists = num_dists
         self.num_params_in_use = int(use_mean + use_stddev + use_dists)
 
     def forward(self, pred, y):
@@ -74,9 +75,9 @@ class CustomLoss(Module):
         """
         loss = 0
         for dim in range(self.num_dims):
-            dists_idx = get_indices(dists=True, dim=dim + 1)
-            mean_idx = get_indices(mean=True, dim=dim + 1)
-            stddev_idx = get_indices(stddev=True, dim=dim + 1)
+            dists_idx = get_indices(dists=True, dim=dim + 1, num_dists=self.num_dists)
+            mean_idx = get_indices(mean=True, dim=dim + 1, num_dists=self.num_dists)
+            stddev_idx = get_indices(stddev=True, dim=dim + 1, num_dists=self.num_dists)
 
             # Class_targets has shape [batch_size, num_classes], others have shape
             # [batch_size], so need to be sliced differently later.

@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 from model import MultiTaskModel, get_indices
 from data_handling import MyDataset
-from distributions import DISTRIBUTIONS
+from distributions import DISTRIBUTIONS, NUM_DISTS
 from env import CONFIG, MODEL_ARCHITECTURE
 
 
@@ -147,15 +147,15 @@ def get_dist_objects(labels):
 
     dist_objs = []
     for i in range(1, CONFIG["NUM_DIMENSIONS"] + 1):
-        dist_indices = get_indices(dists=True, dim=i)
+        dist_indices = get_indices(dists=True, dim=i, num_dists=NUM_DISTS)
         onehot = labels[dist_indices]
         dist_idx = torch.argmax(onehot).item()
         dist_class = list(DISTRIBUTIONS.values())[dist_idx]
 
-        mean_idx = get_indices(mean=True, dim=i)
+        mean_idx = get_indices(mean=True, dim=i, num_dists=NUM_DISTS)
         mean = labels[mean_idx].item()
 
-        stddev_idx = get_indices(stddev=True, dim=i)
+        stddev_idx = get_indices(stddev=True, dim=i, num_dists=NUM_DISTS)
         stddev = labels[stddev_idx].item()
 
         myobj = dist_class(mean, stddev)

@@ -47,9 +47,9 @@ def calculate_metrics(pred, y, num_dimensions, mode):
     for dim in range(num_dimensions):
         # Loop through the dimensions and take the average over each prediction-target
         # pair, then average over dimensions. The opposite order is not the same.
-        dists_idx = get_indices(dists=True, dim=dim + 1)
-        mean_idx = get_indices(mean=True, dim=dim + 1)
-        stddev_idx = get_indices(stddev=True, dim=dim + 1)
+        dists_idx = get_indices(dists=True, dim=dim + 1, num_dists=NUM_DISTS)
+        mean_idx = get_indices(mean=True, dim=dim + 1, num_dists=NUM_DISTS)
+        stddev_idx = get_indices(stddev=True, dim=dim + 1, num_dists=NUM_DISTS)
 
         # Classification metrics need class indices instead of onehot
         class_targets = torch.argmax(y[:, dists_idx], dim=1).numpy()

@@ -6,6 +6,43 @@ import numpy as np
 
 rng = np.random.default_rng()
 
+# Class headers
+
+class Distribution: pass
+
+class Beta(Distribution): pass
+class Gamma(Distribution): pass
+class Gumbel(Distribution): pass
+class Laplace(Distribution): pass
+class Logistic(Distribution): pass
+class Lognormal(Distribution): pass
+class Normal(Distribution): pass
+class Rayleigh(Distribution): pass
+class Wald(Distribution): pass
+
+# Distributions for in use in data generation.
+# The length is a helpful constant to reference.
+# The class objects are empty in this version;
+# the dict is redefined later with proper classes.
+
+## Code will function if some of these are commented out
+## and current data/models are deleted.
+DISTRIBUTIONS = {
+    "Beta": Beta, # Support = (0,1)
+    "Gamma": Gamma, # Support = R+
+    "Gumbel": Gumbel, # Support = R
+    "Laplace": Laplace, # Support = R
+    "Logistic": Logistic, # Support = R+
+    "Lognormal": Lognormal, # Support = R
+    "Normal": Normal, # Support = R
+    "Rayleigh": Rayleigh, # Support = R+
+    "Wald": Wald, # Support = R+
+}
+
+# Extremely useful constant
+NUM_DISTS = len(DISTRIBUTIONS)
+
+# Class definitions
 
 class Distribution:
     """
@@ -41,7 +78,7 @@ class Distribution:
         self.support = support
         self.mean = mean if not isinstance(mean, str) else self.generate_mean()
         self.stddev = stddev if not isinstance(stddev, str) else self.generate_stddev()
-        self.onehot = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.onehot = [0] * NUM_DISTS
 
     def __str__(self):
         string = f"{self.name} (support: {self.support}), "
@@ -88,7 +125,7 @@ class Distribution:
 class Beta(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="I", name="Beta")
-        self.onehot = [1, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
         nonsense_constant = (self.mean * (1 - self.mean) / (self.stddev**2)) - 1
         self.alpha = self.mean * nonsense_constant
         self.beta = (1 - self.mean) * nonsense_constant
@@ -103,7 +140,8 @@ class Beta(Distribution):
 class Gamma(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R+", name="Gamma")
-        self.onehot = [0, 1, 0, 0, 0, 0, 0, 0, 0]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
+        
         self.shape = (self.mean / self.stddev) ** 2
         self.scale = (self.stddev**2) / self.mean
 
@@ -117,7 +155,8 @@ class Gamma(Distribution):
 class Gumbel(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R", name="Gumbel")
-        self.onehot = [0, 0, 1, 0, 0, 0, 0, 0, 0]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
+        
         self.scale = self.stddev * math.sqrt(6) / math.pi
         self.loc = self.mean - self.scale * float(np.euler_gamma)
 
@@ -131,7 +170,8 @@ class Gumbel(Distribution):
 class Laplace(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R", name="Laplace")
-        self.onehot = [0, 0, 0, 1, 0, 0, 0, 0, 0]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
+        
         self.scale = self.stddev / math.sqrt(2)
 
     def rng(self, sample_size):
@@ -144,7 +184,8 @@ class Laplace(Distribution):
 class Logistic(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R", name="Logistic")
-        self.onehot = [0, 0, 0, 0, 1, 0, 0, 0, 0]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
+        
         self.scale = self.stddev * math.sqrt(3) / math.pi
 
     def rng(self, sample_size):
@@ -157,7 +198,8 @@ class Logistic(Distribution):
 class Lognormal(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R+", name="Lognormal")
-        self.onehot = [0, 0, 0, 0, 0, 1, 0, 0, 0]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
+        
         self.shape = math.sqrt(math.log(1 + (self.stddev / self.mean) ** 2))
         self.loc = math.log(
             (self.mean**2) / math.sqrt((self.mean**2) + (self.stddev**2))
@@ -173,7 +215,8 @@ class Lognormal(Distribution):
 class Normal(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R", name="Normal")
-        self.onehot = [0, 0, 0, 0, 0, 0, 1, 0, 0]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
+        
 
     def rng(self, sample_size):
         return rng.normal(self.mean, self.stddev, sample_size)
@@ -185,7 +228,8 @@ class Normal(Distribution):
 class Rayleigh(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R+", name="Rayleigh")
-        self.onehot = [0, 0, 0, 0, 0, 0, 0, 1, 0]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
+        
         self.scale = self.mean * math.sqrt(2 / math.pi)
 
     def rng(self, sample_size):
@@ -198,7 +242,8 @@ class Rayleigh(Distribution):
 class Wald(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R+", name="Wald")
-        self.onehot = [0, 0, 0, 0, 0, 0, 0, 0, 1]
+        self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
+        
         self.lam = (self.mean**3) / (self.stddev**2)
         self.mu = self.mean / self.lam
 
@@ -208,20 +253,7 @@ class Wald(Distribution):
     def pdf(self, x):
         return sps.invgauss.pdf(x, self.mu, scale=self.lam)
 
-
-# Distributions in use for data generator.
-# The length is a helpful constant to reference.
-DISTRIBUTIONS = {
-    "beta": Beta,
-    "gamma": Gamma,
-    "gumbel": Gumbel,
-    "laplace": Laplace,
-    "logistic": Logistic,
-    "lognormal": Lognormal,
-    "normal": Normal,
-    "rayleigh": Rayleigh,
-    "wald": Wald,
-}
-
-# Extremely useful constant
-NUM_DISTS = len(DISTRIBUTIONS)
+# Updates the dict with the new classes.
+# Incomprehensible programming war crime, but it works
+for key, value in DISTRIBUTIONS.items():
+    exec(f"DISTRIBUTIONS['{key}'] = {key}")
