@@ -86,6 +86,8 @@ def pipeline(model, config):
     cosine_scheduler = CosineAnnealingLR(optimizer, T_max=(CONFIG['EPOCHS'] - warmup_epochs), eta_min=1e-4)
     scheduler = SequentialLR(optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[warmup_epochs])
 
+    tolerance = 0.001
+
     # Loss function can't be in config dict because custom_loss_function.py
     # depends on config dict to build the loss function
     loss_function = CustomLoss(num_dimensions=CONFIG['NUM_DIMENSIONS'])
@@ -95,6 +97,7 @@ def pipeline(model, config):
     logger.info(f"Training with {HYPERPARAMETER} = "
                 f"{config[HYPERPARAMETER]}...")
 
+    prev_accuracy = 0
     for epoch in range(config['EPOCHS']):
         logger.info(f"\nEpoch {epoch + 1}\n-------------------------------")
         test_results = train_model(train_dataloader, model, loss_function, optimizer, DEVICE)
@@ -106,6 +109,11 @@ def pipeline(model, config):
                     f"\n\t-->  Accuracy: {test_results['accuracy']:.6f}"
                     )
         scheduler.step()
+    
+        # break if change in accuracy is below tolerance
+        if abs(test_results['accuracy'] - prev_accuracy) < tolerance:
+            break
+        prev_accuracy = test_results['accuracy']
 
     end = time.time()
     logger.info(f"Finished training in {end - start:.3f} seconds")

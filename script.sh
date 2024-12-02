@@ -43,25 +43,23 @@ generate_all_combinations() {
 }
 
 generate_combinations() {
-    echo 128 64 32 16
-    echo 32 16 16 16
-    echo 128 64 32
+    echo 32 16
     echo 64 32 16
+    echo 16 32 64
+    echo 128 64 32
+    echo 128 64 32 16
+    echo 256 128 64 32 16
+    echo 512 256 128 64 32 16
 }
 
-# Iterate over the possible layer counts
-for layers in "${layer_counts[@]}"; do
-    echo "Generating combinations for $layers layers..."
+# Generate all combinations of nodes for the given number of layers
+combinations=$(generate_combinations)
 
-    # Generate all combinations of nodes for the given number of layers
-    combinations=$(generate_combinations "$layers" "")
-
-    # Execute the Python script for each combination
-    while read -r combination; do
-        combination=$(echo $combination | xargs) # Trim any extra spaces
-        cmd="python train_multiple.py $combination" 
-        echo $cmd
-        # $cmd > "output_${combination}.txt" 2>&1
-    done <<< "$combinations"
-done
-
+# Execute the Python script for each combination
+while read -r combination; do
+    combination=$(echo $combination | xargs) # Trim any extra spaces
+    cmd="python train_multiple.py $combination" 
+    echo $cmd
+    fn="outputs/output_$(echo $combination | tr ' ' '_')_new.txt"
+    $cmd 2>&1 | tee $fn
+done <<< "$combinations"

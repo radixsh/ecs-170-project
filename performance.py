@@ -13,7 +13,7 @@ from train_multiple import get_dataloader
 from custom_functions import *
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.ERROR)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 

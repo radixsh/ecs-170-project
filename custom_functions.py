@@ -15,7 +15,7 @@ from collections import defaultdict
 # NO IMPORTING ENV
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.ERROR)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
@@ -170,7 +170,7 @@ def get_indices(dists=False, mean=False, stddev=False, dim=-1):
     return out
 
 class CustomLoss(nn.Module):
-    def __init__(self, use_mean=True, use_stddev=True, use_dists=True, num_dimensions = -1):
+    def __init__(self, use_mean=False, use_stddev=False, use_dists=True, num_dimensions = -1):
         super(CustomLoss, self).__init__()
         self.use_mean = use_mean
         self.use_stddev = use_stddev
