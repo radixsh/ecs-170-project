@@ -1,0 +1,267 @@
+import torch
+from torch.nn import Module, ModuleList, Linear, ReLU, CrossEntropyLoss, MSELoss
+from torch.nn.init import constant_, kaiming_normal_
+
+### No importing any custom files.
+
+
+def get_indices(dists=False, mean=False, stddev=False, dim=-1, num_dists=9):
+    """
+    Calculates the indices for use in our label format. Ex:
+    x = [1,0,0,0,0,0,0,0,0,3.1,0.6,0,1,0,0,0,0,0,0,0,4.5,1.2]
+    x[get_indices(dists=True,dim=1)] -> [1,0,0,0,0,0,0,0,0]
+    x[get_indices(mean=True,stddev=True,dims=2)] -> [4.5,1.2]
+
+    Args:
+        dists (bool): Whether to get the indices for the onehot portion.
+        mean (bool): Whether to get the indices for the mean.
+        stddev (bool): Whether to get the indices for the standard deviation.
+        dim (int): Which dimension to check at.
+
+    Returns:
+        list: A list of ints to be used as indices for a label vector.
+    """
+    out = []
+    if dists:
+        onehot_range = range(
+            (dim - 1) * (num_dists + 2), (dim - 1) * (num_dists + 2) + num_dists
+        )
+        out += onehot_range
+    if mean:
+        out.append(dim * (num_dists + 2) - 2)
+    if stddev:
+        out.append(dim * (num_dists + 2) - 1)
+    return out
+
+
+class CustomLoss(Module):
+    """
+    Loss function for the multi-headed model.
+    """
+
+    def __init__(self, use_mean=True, use_stddev=True, use_dists=True, num_dims=-1):
+        """
+        Constructor for loss function class.
+
+        Args:
+            use_mean (bool): Whether to use the predicted mean in loss calculations.
+            use_stddev (bool): Whether to use the predicted stddev in loss calculations.
+            use_dists (bool): Whether to use the predicted class in loss calculations.
+            num_dimensions (int): The dimensionality of the data in use.
+
+        Returns:
+            CustomLoss object.
+        """
+        super(CustomLoss, self).__init__()
+        self.use_mean = use_mean
+        self.use_stddev = use_stddev
+        self.use_dists = use_dists
+        self.num_dims = num_dims
+        self.num_params_in_use = int(use_mean + use_stddev + use_dists)
+
+    def forward(self, pred, y):
+        """
+        Calculates the model's prediction error. Assuming all bools in init were true,
+        uses CrossEntropyLoss for the classification task(s), RMSE for the regression
+        tasks, and returns the average over all dimensions.
+
+        Args:
+            pred (tensor of floats): The model's prediction.
+            y (tensor): Ground truth values.
+
+        Returns:
+            float: A measure of 'distance' between pred and y.
+        """
+        loss = 0
+        for dim in range(self.num_dims):
+            dists_idx = get_indices(dists=True, dim=dim + 1)
+            mean_idx = get_indices(mean=True, dim=dim + 1)
+            stddev_idx = get_indices(stddev=True, dim=dim + 1)
+
+            # Class_targets has shape [batch_size, num_classes], others have shape
+            # [batch_size], so need to be sliced differently later.
+            class_targets = y[:, dists_idx]
+            mean_targets = y[:, mean_idx]
+            stddev_targets = y[:, stddev_idx]
+
+            if self.use_dists:
+                loss += CrossEntropyLoss()(
+                    pred["classification"][:, dim, :],
+                    torch.argmax(class_targets, dim=1),
+                )
+            if self.use_mean:
+                loss += torch.sqrt(
+                    MSELoss()(pred["mean"][:, dim].unsqueeze(1), mean_targets)
+                )
+            if self.use_stddev:
+                loss += torch.sqrt(
+                    MSELoss()(pred["stddev"][:, dim].unsqueeze(1), stddev_targets)
+                )
+
+        # Average by the number of losses actually used
+        return loss / (self.num_params_in_use * self.num_dims)
+
+
+class StddevActivation(Module):
+    """
+    Sqrt activation for the stddev to align with real life calculations.
+    The derivative of sqrt explodes at 0, so clamp the inputs.
+    """
+
+    def __init__(self):
+        super(StddevActivation, self).__init__()
+
+    def forward(self, x):
+        return torch.sqrt(torch.clamp(torch.abs(x), 1e-6, 1e6))
+
+
+class Head(Module):
+    """
+    Arbitrary head module for the multitask network. Receives input from a shared layer
+    and outputs directly to the loss function. There is one for each pair of tasks
+    and dimensions. There is always one more layer than the length of layer_sizes.
+    """
+
+    def __init__(
+        self,
+        input_dim,
+        layer_sizes=[],
+        output_size=1,
+        activation=ReLU,
+        final_activation=None,
+    ):
+        super(Head, self).__init__()
+        self.layers = ModuleList()
+        if len(layer_sizes) == 0:
+            self.layers.append(Linear(input_dim, output_size, bias=False))
+        else:
+            self.layers.append(Linear(input_dim, layer_sizes[0]))
+            self.layers.append(activation())
+            # "Hidden" layers generated here
+            for n in range(len(layer_sizes) - 1):
+                self.layers.append(Linear(layer_sizes[n], layer_sizes[n + 1]))
+                self.layers.append(activation())
+
+            # Output layer
+            self.layers.append(
+                Linear(layer_sizes[-1], output_size, bias=False)  # Output layer
+            )
+
+        if final_activation:
+            self.layers.append(final_activation())
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+
+class MultiTaskModel(Module):
+    """
+    Network architecture is determined here. There are two sets of shared layers,
+    the first of which is only the input layer, fixed at size SAMPLE_SIZE.
+    The input layer feeds directly into the head for mean regression and
+    the second set of shared layers, which is controlled by SHARED_LAYER_SIZES.
+    If the network displays evidence of shared representations, that representation
+    is probably going on here. These layers feed into both the stddev and
+    classification heads, which are controlled by their respective lists.
+    Generally speaking, SHARED_LAYER_SIZES ought to be short and wide to encourage
+    more sparse representations, and individual class heads ought to be thinner
+    and longer to extract features from those representations.
+    """
+
+    def __init__(self, config, architecture, num_classes, activation=ReLU):
+        super(MultiTaskModel, self).__init__()
+        self.num_dimensions = config["NUM_DIMENSIONS"]
+        self.num_classes = num_classes
+        input_dim = config["SAMPLE_SIZE"] * self.num_dimensions
+        self.shared_layer_sizes = architecture["SHARED_LAYER_SIZES"]
+        self.stddev_head_layer_sizes = architecture["STDDEV_LAYER_SIZES"]
+        self.class_head_layer_sizes = architecture["CLASS_LAYER_SIZES"]
+
+        # Input layer. No bias, since calculating mean should not need it.
+        self.input = Linear(input_dim, input_dim, bias=False)
+
+        # Second set of shared layers, the bulk of the network is created here.
+        self.shared_layers = ModuleList()
+        self.shared_layers.append(Linear(input_dim, self.shared_layer_sizes[0]))
+        self.shared_layers.append(activation())
+        for n in range(len(self.shared_layer_sizes) - 1):
+            self.shared_layers.append(
+                Linear(self.shared_layer_sizes[n], self.shared_layer_sizes[n + 1])
+            )
+            self.shared_layers.append(activation())
+
+        # Make a head of each metric for each dimension.
+        self.mean_head_array = ModuleList(
+            [Head(input_dim) for _ in range(self.num_dimensions)]
+        )
+
+        self.stddev_head_array = ModuleList(
+            [
+                Head(
+                    self.shared_layer_sizes[-1],
+                    layer_sizes=self.stddev_head_layer_sizes,
+                    activation=activation,
+                    final_activation=StddevActivation,
+                )
+                for _ in range(self.num_dimensions)
+            ]
+        )
+
+        self.class_head_array = ModuleList(
+            [
+                Head(
+                    self.shared_layer_sizes[-1],
+                    layer_sizes=self.class_head_layer_sizes,
+                    output_size=num_classes,
+                    activation=activation,
+                )
+                for _ in range(self.num_dimensions)
+            ]
+        )
+
+        # Uses He initialization for optimality with ReLU activations.
+        def initializer(module):
+            if isinstance(module, Linear):
+                kaiming_normal_(module.weight, nonlinearity="relu")
+                if module.bias is not None:
+                    constant_(module.bias, 0)
+
+        self.apply(initializer)
+
+    def forward(self, x):
+        batch_size = x.size(0)
+
+        # This needs to be really fast, so pre-initialize everything possible.
+        outputs = {
+            "classification": torch.zeros(
+                batch_size, self.num_dimensions, self.num_classes
+            ),
+            "mean": torch.zeros(batch_size, self.num_dimensions),
+            "stddev": torch.zeros(batch_size, self.num_dimensions),
+        }
+
+        input = self.input(x)  # First shared -> mean, second shared
+        shared = input  # Second shared -> stddev, classification
+        for layer in self.shared_layers:
+            shared = layer(shared)
+
+        for n in range(self.num_dimensions):
+            # Shape: [batch_size, num_dimensions, num_distributions]
+            # For example, [1000, 2, 9] means:
+            #   1000 "rows" (one per item in batch), each containing:
+            #       a vector of length 2 (one for each dim) containing:
+            #           a onehot vector of length 9 (one for each distribution)
+            outputs["classification"][:, n, :] = self.class_head_array[n](shared)
+
+            # Shape: [batch_size, num_dimensions]
+            # For example, [1000, 2] means:
+            #   1000 "rows" (one per item in batch), within each row:
+            #       a vector of length 2 (one for each dim) containing means
+            # One less tensor-dimension than class since
+            #   means are numbers instead of onehot vectors
+            outputs["mean"][:, n] = self.mean_head_array[n](input).squeeze(-1)
+            outputs["stddev"][:, n] = self.stddev_head_array[n](shared).squeeze(-1)
+
+        return outputs

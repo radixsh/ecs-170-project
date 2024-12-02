@@ -1,20 +1,25 @@
 import sys
+import logging
+import re
+
 import matplotlib.pyplot as plt
 import torch
-import logging
 import numpy as np
 from torch.utils.data import DataLoader
-from pprint import pformat
 
-from env import *
-from custom_functions import *
+from model import MultiTaskModel, get_indices
+from data_handling import MyDataset
+from distributions import DISTRIBUTIONS
+from env import CONFIG, MODEL_ARCHITECTURE
+
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
 GRAPH_FIDELITY = 1000
+
 
 def generate_1d():
     """
@@ -23,7 +28,7 @@ def generate_1d():
     raw_data = []
     for dist_name, dist_class in DISTRIBUTIONS.items():
         instance = dist_class()
-        points = instance.rng(CONFIG['SAMPLE_SIZE'])
+        points = instance.rng(CONFIG["SAMPLE_SIZE"])
         labels = instance.get_label()
         raw_data.append((points, labels))
 
@@ -35,6 +40,7 @@ def generate_1d():
     # at a time
     dataloader = DataLoader(dataset, batch_size=1)
     return dataloader
+
 
 def generate_2d():
     """
@@ -49,7 +55,7 @@ def generate_2d():
         outer_class = DISTRIBUTIONS[outer_name]
         outer_object = outer_class()
 
-        outer_points = outer_object.rng(CONFIG['SAMPLE_SIZE'])
+        outer_points = outer_object.rng(CONFIG["SAMPLE_SIZE"])
         points.extend(outer_points)
 
         outer_labels = outer_object.get_label()
@@ -61,7 +67,7 @@ def generate_2d():
             inner_class = DISTRIBUTIONS[inner_name]
             inner_object = inner_class()
 
-            inner_points = inner_object.rng(CONFIG['SAMPLE_SIZE'])
+            inner_points = inner_object.rng(CONFIG["SAMPLE_SIZE"])
             temp_points.extend(inner_points)
 
             inner_labels = inner_object.get_label()
@@ -78,20 +84,22 @@ def generate_2d():
     dataloader = DataLoader(dataset, batch_size=1)
     return dataloader
 
+
 def get_domain(dist):
     """
     Turns a support string ("R", "R+", or "I") into a linspace object for pyplot
     to graph.
     """
-    if dist.support == 'R':
+    if dist.support == "R":
         x_min = dist.mean - 3 * dist.stddev
         x_max = dist.mean + 3 * dist.stddev
         return np.linspace(x_min, x_max, GRAPH_FIDELITY)
-    elif dist.support == 'R+':
+    elif dist.support == "R+":
         x_max = dist.mean + 3 * dist.stddev
         return np.linspace(0, x_max, GRAPH_FIDELITY)
-    elif dist.support == 'I':
+    elif dist.support == "I":
         return np.linspace(0, 1, GRAPH_FIDELITY)
+
 
 def list_to_tuple(points):
     """
@@ -108,20 +116,22 @@ def list_to_tuple(points):
             dim2.append(value)
     return (dim1, dim2)
 
+
 def get_dist_objects_dict(predictions):
     dist_objs = []
-    for i in range(CONFIG['NUM_DIMENSIONS']):
-        onehot = predictions['classification'][i]
+    for i in range(CONFIG["NUM_DIMENSIONS"]):
+        onehot = predictions["classification"][0][i]
         dist_idx = torch.argmax(onehot).item()
         dist_class = list(DISTRIBUTIONS.values())[dist_idx]
 
-        mean = predictions['mean'][i].item()
-        stddev = predictions['stddev'][i].item()
+        mean = predictions["mean"][0][i].item()
+        stddev = predictions["stddev"][0][i].item()
 
         myobj = dist_class(mean, stddev)
         dist_objs.append(myobj)
 
     return dist_objs
+
 
 def get_dist_objects(labels):
     """
@@ -134,9 +144,9 @@ def get_dist_objects(labels):
     """
     if isinstance(labels, dict):
         return get_dist_objects_dict(labels)
-    
+
     dist_objs = []
-    for i in range(1, CONFIG['NUM_DIMENSIONS'] + 1):
+    for i in range(1, CONFIG["NUM_DIMENSIONS"] + 1):
         dist_indices = get_indices(dists=True, dim=i)
         onehot = labels[dist_indices]
         dist_idx = torch.argmax(onehot).item()
@@ -162,47 +172,61 @@ def test_1d(model, dataloader):
     guesses = []
     with torch.no_grad():
         for points, labels in dataloader:
-            points, labels = points.to(DEVICE).float(), labels.to(DEVICE).float()
+            points, labels = (
+                points.to(CONFIG["DEVICE"]).float(),
+                labels.to(CONFIG["DEVICE"]).float(),
+            )
 
             # The first item is the only item because batch_size=1 for testing
             guesses = model(points)
-            print(guesses)
             points = points[0]
             labels = labels[0]
 
             fig, ax = plt.subplots()
 
-            actual_color = 'royalblue'
+            actual_color = "royalblue"
             # The 'alpha' parameter sets points to be slightly transparent,
             # showing us where points might be highly concentrated
-            ax.scatter(points, [0 for i in points], color=actual_color, s=70,
-                       alpha=0.3)
+            ax.scatter(points, [0 for i in points], color=actual_color, s=70, alpha=0.3)
             logger.debug(f"\npoints: {points}")
 
             actual_dist = get_dist_objects(labels)[0]
             actual_domain = get_domain(actual_dist)
-            actual_label = (f"actual: {actual_dist.name} "
-                           f"(µ={actual_dist.mean:.2f}, "
-                           f"σ={actual_dist.stddev:.2f})")
+            actual_label = (
+                f"actual: {actual_dist.name} "
+                f"(µ={actual_dist.mean:.2f}, "
+                f"σ={actual_dist.stddev:.2f})"
+            )
             logger.debug(actual_label)
-            plt.plot(actual_domain, actual_dist.pdf(actual_domain),
-                     color=actual_color, label=actual_label)
+            plt.plot(
+                actual_domain,
+                actual_dist.pdf(actual_domain),
+                color=actual_color,
+                label=actual_label,
+            )
 
             guess_dist = get_dist_objects(guesses)[0]
             guess_domain = get_domain(guess_dist)
-            guess_label = (f"guess: {guess_dist.name} "
-                           f"(µ={guess_dist.mean:.2f}, "
-                           f"σ={guess_dist.stddev:.2f})")
+            guess_label = (
+                f"guess: {guess_dist.name} "
+                f"(µ={guess_dist.mean:.2f}, "
+                f"σ={guess_dist.stddev:.2f})"
+            )
             logger.debug(guess_label)
-            plt.plot(actual_domain, guess_dist.pdf(actual_domain),
-                     color='orangered', label=guess_label)
+            plt.plot(
+                actual_domain,
+                guess_dist.pdf(actual_domain),
+                color="orangered",
+                label=guess_label,
+            )
 
-            plt.xlabel('Domain')
-            plt.ylabel('Probability distribution functions')
+            plt.xlabel("Domain")
+            plt.ylabel("Probability distribution functions")
             plt.title("Actual (blue) vs predicted (orange) distributions")
             plt.legend()
 
             plt.show()
+
 
 def test_2d(model, dataloader):
     """
@@ -212,20 +236,24 @@ def test_2d(model, dataloader):
     guesses = []
     with torch.no_grad():
         for points, labels in dataloader:
-            points, labels = points.to(DEVICE).float(), labels.to(DEVICE).float()
+            points, labels = (
+                points.to(CONFIG["DEVICE"]).float(),
+                labels.to(CONFIG["DEVICE"]).float(),
+            )
 
             # The first item is the only item because batch_size=1 for testing
-            guesses = model(points)[0]
+            guesses = model(points)
             labels = labels[0]
 
             fig = plt.figure()
-            ax = fig.add_subplot(projection='3d')
+            ax = fig.add_subplot(projection="3d")
             ax.set_title("Actual (blue) vs predicted (orange) distributions")
 
             points_dim1, points_dim2 = list_to_tuple(points[0])
             actual_color = "blue"
-            ax.scatter(points_dim1, points_dim2, [0 for i in points],
-                       color=actual_color)
+            ax.scatter(
+                points_dim1, points_dim2, [0 for i in points], color=actual_color
+            )
 
             # ====================
             # ACTUAL DISTRIBUTIONS
@@ -240,16 +268,22 @@ def test_2d(model, dataloader):
 
             X, Y = np.meshgrid(actual_dim1_domain, actual_dim2_domain)
             actual = actual_dim1.pdf(X) * actual_dim2.pdf(Y)
-            ax.plot_surface(X, Y, actual,
-                            color=actual_color, # cmap="Blues_r",
-                            alpha=0.8,
-                            edgecolor=None)
-            logger.debug(f"actual: {actual_dim1.name} "
-                         f"(µ={actual_dim1.mean:.2f}, "
-                         f"σ={actual_dim1.stddev:.2f}), "
-                         f"{actual_dim2.name} "
-                         f"(µ={actual_dim2.mean:.2f}, "
-                         f"σ={actual_dim2.stddev:.2f})")
+            ax.plot_surface(
+                X,
+                Y,
+                actual,
+                color=actual_color,  # cmap="Blues_r",
+                alpha=0.8,
+                edgecolor=None,
+            )
+            logger.debug(
+                f"actual: {actual_dim1.name} "
+                f"(µ={actual_dim1.mean:.2f}, "
+                f"σ={actual_dim1.stddev:.2f}), "
+                f"{actual_dim2.name} "
+                f"(µ={actual_dim2.mean:.2f}, "
+                f"σ={actual_dim2.stddev:.2f})"
+            )
 
             # =======================
             # PREDICTED DISTRIBUTIONS
@@ -259,67 +293,100 @@ def test_2d(model, dataloader):
 
             guess = guess_dim1.pdf(X) * guess_dim2.pdf(Y)
             guess = guess_dim1.pdf(X) * guess_dim2.pdf(Y)
-            ax.plot_surface(X, Y, guess,
-                            color="orange", # cmap="Oranges_r",
-                            alpha=0.8,
-                            edgecolor=None)
-            logger.debug(f"guess: {guess_dim1.name} "
-                         f"(µ={guess_dim1.mean:.2f}, "
-                         f"σ={guess_dim1.stddev:.2f}), "
-                         f"{guess_dim2.name} "
-                         f"(µ={guess_dim2.mean:.2f}, "
-                         f"σ={guess_dim2.stddev:.2f})")
+            ax.plot_surface(
+                X,
+                Y,
+                guess,
+                color="orange",  # cmap="Oranges_r",
+                alpha=0.8,
+                edgecolor=None,
+            )
+            logger.debug(
+                f"guess: {guess_dim1.name} "
+                f"(µ={guess_dim1.mean:.2f}, "
+                f"σ={guess_dim1.stddev:.2f}), "
+                f"{guess_dim2.name} "
+                f"(µ={guess_dim2.mean:.2f}, "
+                f"σ={guess_dim2.stddev:.2f})"
+            )
 
-            x_label = (f"Actual: {actual_dim1.name} "
-                       f"(µ={actual_dim1.mean:.2f}, "
-                       f"σ={actual_dim1.stddev:.2f})\n"
-                       f"Guess: {guess_dim1.name} "
-                       f"(µ={guess_dim1.mean:.2f}, "
-                       f"σ={guess_dim1.stddev:.2f})")
+            x_label = (
+                f"Actual: {actual_dim1.name} "
+                f"(µ={actual_dim1.mean:.2f}, "
+                f"σ={actual_dim1.stddev:.2f})\n"
+                f"Guess: {guess_dim1.name} "
+                f"(µ={guess_dim1.mean:.2f}, "
+                f"σ={guess_dim1.stddev:.2f})"
+            )
             ax.set_xlabel(x_label)
-            y_label = (f"Actual: {actual_dim2.name} "
-                       f"(µ={actual_dim2.mean:.2f}, "
-                       f"σ={actual_dim2.stddev:.2f})\n"
-                       f"Guess: {guess_dim2.name} "
-                       f"(µ={guess_dim2.mean:.2f}, "
-                       f"σ={guess_dim2.stddev:.2f})")
+            y_label = (
+                f"Actual: {actual_dim2.name} "
+                f"(µ={actual_dim2.mean:.2f}, "
+                f"σ={actual_dim2.stddev:.2f})\n"
+                f"Guess: {guess_dim2.name} "
+                f"(µ={guess_dim2.mean:.2f}, "
+                f"σ={guess_dim2.stddev:.2f})"
+            )
             ax.set_ylabel(y_label)
 
             plt.show()
 
+
 def model_setup():
     filename = sys.argv[1]
-    config = parse_weights_filename(filename)
+
+    # Define the regex pattern
+    pattern = r"(models/)?weights_train_(\d+)_sample_(\d+)_dims_(\d+)_batch_(\d+)_lrate_(\d.\d+).pth"
+    # Match the pattern with the filename
+    match = re.match(pattern, filename)
+    if not match:
+        raise ValueError(f"Filename {filename} does not match the expected format.")
+
+    # Extract the values and convert to appropriate types
+    _, train_size, sample_size, num_dims, batch_size, learning_rate = match.groups()
+    config = {
+        "TRAIN_SIZE": int(train_size),
+        "SAMPLE_SIZE": int(sample_size),
+        "NUM_DIMENSIONS": int(num_dims),
+        "BATCH_SIZE": int(batch_size),
+        "LEARNING_RATE": float(learning_rate),
+    }
 
     # Load the model's weights
-    model = MultiTaskModel(config, MODEL_ARCHITECTURE, len(DISTRIBUTIONS)).to(DEVICE)
+    model = MultiTaskModel(config, MODEL_ARCHITECTURE, len(DISTRIBUTIONS)).to(
+        CONFIG["DEVICE"]
+    )
     state_dict = torch.load(filename)
     if state_dict is None:
         logger.debug("State dict is illegible! Quitting")
         sys.exit(0)
     model.load_state_dict(state_dict)
 
-    logger.debug(f'Analyzing model from {filename}')
+    logger.debug(f"Analyzing model from {filename}")
     return model
+
 
 # Sanity-check the model's performance (good for presentation)
 def main():
     if len(sys.argv) != 2:
-        print(f'Usage: sanity_check.py models/your_model_weights.pth')
+        print(f"Usage: sanity_check.py models/your_model_weights.pth")
         sys.exit(0)
 
     model = model_setup()
     model.eval()
 
-    if CONFIG['NUM_DIMENSIONS'] == 1:
+    if CONFIG["NUM_DIMENSIONS"] == 1:
         dataloader = generate_1d()
         test_1d(model, dataloader)
-    elif CONFIG['NUM_DIMENSIONS'] == 2:
+    elif CONFIG["NUM_DIMENSIONS"] == 2:
         dataloader = generate_2d()
         test_2d(model, dataloader)
     else:
-        logger.warning(f"{CONFIG['NUM_DIMENSIONS']} dimensions is not supported, exiting")
+        logger.warning(
+            f"{CONFIG['NUM_DIMENSIONS']} dimensions is not supported, exiting"
+        )
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

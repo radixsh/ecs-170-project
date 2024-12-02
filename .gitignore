@@ -19,6 +19,7 @@ wheels/
 # models and data directory are too big to push
 models/
 data/
+logs/
 
 # vscode workspace file
 ecs-170-project.code-workspace
