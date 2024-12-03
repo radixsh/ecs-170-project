@@ -39,6 +39,8 @@ DISTRIBUTIONS = {
     "Wald": Wald, # Support = R+
 }
 
+SUPPORTS = ['I', 'R', 'R+']
+
 # Extremely useful constant
 NUM_DISTS = len(DISTRIBUTIONS)
 
@@ -79,6 +81,8 @@ class Distribution:
         self.mean = mean if not isinstance(mean, str) else self.generate_mean()
         self.stddev = stddev if not isinstance(stddev, str) else self.generate_stddev()
         self.onehot = [0] * NUM_DISTS
+        self.support_vec = [0] * len(SUPPORTS)
+        self.support_vec[SUPPORTS.index(self.support)] = 1
 
     def __str__(self):
         string = f"{self.name} (support: {self.support}), "
@@ -88,7 +92,7 @@ class Distribution:
         return string
 
     def get_label(self):
-        return self.onehot + [self.mean, self.stddev]
+        return self.onehot + [self.mean, self.stddev] + self.support_vec
 
     # Returns a random positive real according to the lognormal distribution
     # with mean and stddev 1. Useful for generating stddevs and positive means.

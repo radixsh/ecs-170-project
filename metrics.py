@@ -7,7 +7,6 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     mean_absolute_error,
-    mean_absolute_percentage_error,
     mean_squared_error,
     precision_score,
     r2_score,
@@ -47,13 +46,17 @@ def calculate_metrics(pred, y, num_dimensions, mode):
     for dim in range(num_dimensions):
         # Loop through the dimensions and take the average over each prediction-target
         # pair, then average over dimensions. The opposite order is not the same.
-        dists_idx = get_indices(dists=True, dim=dim + 1, num_dists=NUM_DISTS)
-        mean_idx = get_indices(mean=True, dim=dim + 1, num_dists=NUM_DISTS)
-        stddev_idx = get_indices(stddev=True, dim=dim + 1, num_dists=NUM_DISTS)
+        dists_idx = get_indices(dim+1, NUM_DISTS, dists=True)
+        mean_idx = get_indices(dim+1, NUM_DISTS, mean=True)
+        stddev_idx = get_indices(dim+1, NUM_DISTS, stddev=True)
+        support_idx = get_indices(dim+1, NUM_DISTS, support=True)
 
         # Classification metrics need class indices instead of onehot
         class_targets = torch.argmax(y[:, dists_idx], dim=1).numpy()
         class_preds = torch.argmax(pred["classification"][:, dim, :], dim=1).numpy()
+
+        support_targets = torch.argmax(y[:, support_idx], dim=1).numpy()
+        support_preds = torch.argmax(pred["support"][:, dim, :], dim=1).numpy()
 
         mean_targets = y[:, mean_idx].numpy()
         mean_preds = pred["mean"][:, dim].detach().numpy()
@@ -63,23 +66,18 @@ def calculate_metrics(pred, y, num_dimensions, mode):
 
         # Standard metrics to be calculated every epoch.
         metrics["accuracy"].append(accuracy_score(class_targets, class_preds))
+        metrics["support_accuracy"].append(accuracy_score(support_targets, support_preds))
         metrics["mean_r2"].append(r2_score(mean_targets, mean_preds))
         metrics["stddev_r2"].append(r2_score(stddev_targets, stddev_preds))
 
         # Test-only metrics.
         if mode == "TEST":
             metrics["mean_mae"].append(mean_absolute_error(mean_targets, mean_preds))
-            metrics["mean_mape"].append(
-                mean_absolute_percentage_error(stddev_targets, stddev_preds)
-            )
             metrics["mean_rmse"].append(
                 np.sqrt(mean_squared_error(mean_targets, mean_preds))
             )
             metrics["stddev_mae"].append(
                 mean_absolute_error(stddev_targets, stddev_preds)
-            )
-            metrics["stddev_mape"].append(
-                mean_absolute_percentage_error(mean_targets, mean_preds)
             )
             metrics["stddev_rmse"].append(
                 np.sqrt(mean_squared_error(stddev_targets, stddev_preds))
@@ -114,12 +112,42 @@ def calculate_metrics(pred, y, num_dimensions, mode):
                     zero_division=0.0,
                 )
             )
+            metrics["avg_support_precision"].append(
+                precision_score(
+                    support_targets,
+                    support_preds,
+                    labels=range(3),
+                    average=None,
+                    zero_division=0.0,
+                )
+            )
+            metrics["avg_support_recall"].append(
+                recall_score(
+                    support_targets,
+                    support_preds,
+                    labels=range(3),
+                    average=None,
+                    zero_division=0.0,
+                )
+            )
+            metrics["avg_support_f1"].append(
+                f1_score(
+                    support_targets,
+                    support_preds,
+                    labels=range(3),
+                    average=None,
+                    zero_division=0.0,
+                )
+            )
 
     # Preserve class-specific metrics, calling np.mean without axis=0 yields one float.
     if mode == "TEST":
         precision = np.mean(metrics["avg_precision"], axis=0)
         recall = np.mean(metrics["avg_recall"], axis=0)
         f1 = np.mean(metrics["avg_f1"], axis=0)
+        support_precision = np.mean(metrics["avg_support_precision"], axis=0)
+        support_recall = np.mean(metrics["avg_support_recall"], axis=0)
+        support_f1 = np.mean(metrics["avg_support_f1"], axis=0)
 
     # Take the average over the dimensionality of the data.
     metrics = {key: np.mean(value) for key, value in metrics.items()}
@@ -128,6 +156,9 @@ def calculate_metrics(pred, y, num_dimensions, mode):
         metrics["precision"] = precision
         metrics["recall"] = recall
         metrics["f1"] = f1
+        metrics["support_precision"] = support_precision
+        metrics["support_recall"] = support_recall
+        metrics["support_f1"] = support_f1
 
     return metrics
 
@@ -150,6 +181,9 @@ def display_metrics(metrics, mode, epoch=-1):
         precision = metrics["precision"]
         recall = metrics["recall"]
         f1 = metrics["f1"]
+        support_precision = metrics["support_precision"]
+        support_recall = metrics["support_recall"]
+        support_f1 = metrics["support_f1"]
 
     metrics = {key: np.mean(value) for key, value in metrics.items()}
 
@@ -159,15 +193,20 @@ def display_metrics(metrics, mode, epoch=-1):
             f" EPOCH {epoch} "
             f"-------------------------------------"
             f"\nMetrics:"
-            f"\n\t-->      Loss: {metrics['loss']:.6f}"
-            f"\n\t-->   Mean R2: {metrics['mean_r2']:.6f}"
-            f"\n\t--> Stddev R2: {metrics['stddev_r2']:.6f}"
-            f"\n\t-->  Accuracy: {metrics['accuracy']:.6f}"
+            f"\n\t-->        Loss: {metrics['loss']:.6f}"
+            f"\n\t-->     Mean R2: {metrics['mean_r2']:.6f}"
+            f"\n\t-->   Stddev R2: {metrics['stddev_r2']:.6f}"
+            f"\n\t-->    Accuracy: {metrics['accuracy']:.6f}"
+            f"\n\t--> Support Acc: {metrics['support_accuracy']:.6f}"
+            
         )
     elif mode == "TEST":
         metrics["precision"] = np.mean(precision, axis=0)
         metrics["recall"] = np.mean(recall, axis=0)
         metrics["f1"] = np.mean(f1, axis=0)
+        metrics["support_precision"] = np.mean(support_precision, axis=0)
+        metrics["support_recall"] = np.mean(support_recall, axis=0)
+        metrics["support_f1"] = np.mean(support_f1, axis=0)
         for key, value in metrics.items():
             metrics[key] = np.round(value, decimals=3)
         logger.info(
@@ -176,8 +215,6 @@ def display_metrics(metrics, mode, epoch=-1):
             f"\t{metrics['stddev_r2']:.3f}"
             f"\n\t-->       MAE: {metrics['mean_mae']:.3f}"
             f"\t{metrics['stddev_mae']:.3f}"
-            f"\n\t-->      MAPE: {metrics['mean_mape']:.3f}"
-            f"\t{metrics['stddev_mape']:.3f}"
             f"\n\t-->      RMSE: {metrics['mean_rmse']:.3f}"
             f"\t{metrics['stddev_rmse']:.3f}"
             f"\nClassification:      Average\tIndividual Classes"
@@ -188,6 +225,14 @@ def display_metrics(metrics, mode, epoch=-1):
             f"\t{metrics['recall']}"
             f"\n\t-->  F1 Score: {metrics['avg_f1']:.3f}"
             f"\t{metrics['f1']}"
+            f"\nSupport:             Average\tIndividual Classes"
+            f"\n\t--> Accuracy: {metrics['support_accuracy']:.3f}"
+            f"\n\t--> Precision: {metrics['avg_support_precision']:.3f}"
+            f"\t{metrics['support_precision']}"
+            f"\n\t-->    Recall: {metrics['avg_support_recall']:.3f}"
+            f"\t{metrics['support_recall']}"
+            f"\n\t-->  F1 Score: {metrics['avg_support_f1']:.3f}"
+            f"\t{metrics['support_f1']}"
             f"\nLoss:\t\t(Non-performance, diagnostic only)"
             f"\n\t-->  Avg Loss: {metrics['loss']:.3f}"
         )

@@ -66,7 +66,7 @@ def main():
     if len(VALUES) <= 1:
         return
 
-    regression_metrics = ["r2", "mae", "mape", "rmse"]
+    regression_metrics = ["r2", "mae", "rmse"]
     for metric_name in regression_metrics:
         regression_png(
             metric_name.upper(),

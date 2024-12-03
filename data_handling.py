@@ -64,10 +64,10 @@ def get_dataset(config, mode):
     # Main data generation loop. Preinstantiate arrays for speed, randomly select a
     # distribution, and use its methods get a sample set of points and a label.
     samples = np.zeros((data_size, num_dims * sample_size))
-    labels = np.zeros((data_size, num_dims * (NUM_DISTS + 2)))
+    labels = np.zeros((data_size, num_dims * (NUM_DISTS + 5)))
     for idx in range(data_size):
         curr_points = np.zeros((num_dims, sample_size))
-        curr_labels = np.zeros((num_dims, (NUM_DISTS + 2)))
+        curr_labels = np.zeros((num_dims, (NUM_DISTS + 5)))
         for dim in range(num_dims):
             dist = np.random.choice(list(DISTRIBUTIONS.values()))()
             curr_points[dim] = dist.rng(sample_size)
