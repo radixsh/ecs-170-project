@@ -1,5 +1,6 @@
 import warnings
-from collections import defaultdict, deque
+from collections import defaultdict
+import logging
 
 import torch
 from torch.optim import Adam, Adamax, AdamW, NAdam
@@ -7,14 +8,18 @@ from torch.optim.lr_scheduler import SequentialLR, CosineAnnealingLR, LambdaLR
 from torch.utils.data import DataLoader
 import numpy as np
 
-from data_handling import get_dataset, logger, make_weights_filename
-from distributions import NUM_DISTS
+from data_handling import get_dataset, make_weights_filename
+from distributions import NUM_DISTS, DISTRIBUTIONS
 from metrics import calculate_metrics, display_metrics
 from model import CustomLoss
-from visualizations import visualize_activations_avg
+from visualizations import visualize_activations_avg, confusion
 
 ### Illegal imports: env, generate_data, sanity_check, performance, train_multiple
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+logger.addHandler(console_handler)
 
 def run_model(model, config, mode):
     """
@@ -39,7 +44,7 @@ def run_model(model, config, mode):
         model.train()
         torch.set_grad_enabled(True)
         # Use one of the following optimizers: Adam, AdamW, Adamax, NAdam, RMSprop.
-        # These use second-order gradient; first-order optimizers like SGD never 
+        # These use second-order gradient; first-order optimizers like SGD never
         # overcome an initial local minima in the gradient.
         optimizer = Adamax(
             model.parameters(),
@@ -51,10 +56,11 @@ def run_model(model, config, mode):
         epochs = config["EPOCHS"]
         warmup_len = 5
         if epochs < warmup_len:
-            print("Not enough epochs! Updating for you.")
-            config['EPOCHS'] = warmup_len+1
-            config = config['EPOCHS']
-        
+            raise Exception(f"Not enough epochs! EPOCHS={epochs} must be at "
+                            f"least 6.")
+            # config['EPOCHS'] = warmup_len+1
+            # epochs = config['EPOCHS']
+
         warmup_lr = LambdaLR(
             optimizer, lr_lambda=lambda epoch: (epoch + 1) / warmup_len
         )
@@ -82,7 +88,7 @@ def run_model(model, config, mode):
 
     loss_function = CustomLoss(num_dims=config["NUM_DIMENSIONS"], num_dists=NUM_DISTS)
 
-    # Need to track the best loss to output the best model. 
+    # Need to track the best loss to output the best model.
     best_loss = float('inf')
     best_weights = None # Unclear what type this should be.
     best_metrics = defaultdict(list)
@@ -111,6 +117,7 @@ def run_model(model, config, mode):
                 optimizer.step()
 
             if mode == "TEST":
+                confusion(y, pred, NUM_DISTS, DISTRIBUTIONS)
                 # Only one batch during testing, so we're basically done.
                 best_metrics = calculate_metrics(
                     pred, y, config["NUM_DIMENSIONS"], mode=mode

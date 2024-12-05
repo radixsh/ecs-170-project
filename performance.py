@@ -6,11 +6,15 @@ from collections import defaultdict
 
 from model import MultiTaskModel
 from visualizations import regression_png, classification_png, visualize_weights
-from data_handling import make_weights_filename, logger
+from data_handling import make_weights_filename
 from distributions import NUM_DISTS
 from core import run_model
 from env import CONFIG, MODEL_ARCHITECTURE, HYPERPARAMETER, VALUES
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+logger.addHandler(console_handler)
 
 def main():
     """
