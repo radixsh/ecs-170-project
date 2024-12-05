@@ -95,7 +95,7 @@ def classification_png(name, x_values, metrics, hyperparameter):
     plt.title(name)
     plt.legend(bbox_to_anchor=(1, 1), loc="upper left")
     destination = f"{hyperparameter.lower()}_{name.replace(' ', '_')}.png"
-    plt.savefig(os.path.join("data", destination), bbox_inches="tight")
+    plt.savefig(os.path.join("results", destination), bbox_inches="tight")
     plt.show()
 
 def visualize_weights(model, layer_names=None):
