@@ -1,5 +1,6 @@
 import warnings
-from collections import defaultdict, deque
+import logging
+from collections import defaultdict
 
 import torch
 from torch.optim import Adam, Adamax, AdamW, NAdam
@@ -7,7 +8,7 @@ from torch.optim.lr_scheduler import SequentialLR, CosineAnnealingLR, LambdaLR
 from torch.utils.data import DataLoader
 import numpy as np
 
-from data_handling import get_dataset, logger, make_weights_filename
+from data_handling import get_dataset, make_weights_filename
 from distributions import NUM_DISTS
 from metrics import calculate_metrics, display_metrics
 from model import CustomLoss
@@ -15,6 +16,10 @@ from visualizations import visualize_activations_avg
 
 ### Illegal imports: env, generate_data, sanity_check, performance, train_multiple
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+logger.addHandler(console_handler)
 
 def run_model(model, config, mode):
     """

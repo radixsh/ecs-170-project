@@ -1,6 +1,4 @@
-import sys
 import logging
-import re
 
 import matplotlib.pyplot as plt
 import torch
@@ -8,7 +6,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 
 from model import MultiTaskModel, get_indices
-from data_handling import MyDataset
+from data_handling import MyDataset, make_weights_filename
 from distributions import DISTRIBUTIONS, NUM_DISTS
 from env import CONFIG, MODEL_ARCHITECTURE
 
@@ -333,33 +331,15 @@ def test_2d(model, dataloader):
 
 
 def model_setup():
-    filename = sys.argv[1]
-
-    # Define the regex pattern
-    pattern = r"(models/)?weights_train_(\d+)_sample_(\d+)_dims_(\d+)_batch_(\d+)_lrate_(\d.\d+).pth"
-    # Match the pattern with the filename
-    match = re.match(pattern, filename)
-    if not match:
-        raise ValueError(f"Filename {filename} does not match the expected format.")
-
-    # Extract the values and convert to appropriate types
-    _, train_size, sample_size, num_dims, batch_size, learning_rate = match.groups()
-    config = {
-        "TRAIN_SIZE": int(train_size),
-        "SAMPLE_SIZE": int(sample_size),
-        "NUM_DIMENSIONS": int(num_dims),
-        "BATCH_SIZE": int(batch_size),
-        "LEARNING_RATE": float(learning_rate),
-    }
+    filename = make_weights_filename(CONFIG, MODEL_ARCHITECTURE)
 
     # Load the model's weights
-    model = MultiTaskModel(config, MODEL_ARCHITECTURE, len(DISTRIBUTIONS)).to(
+    model = MultiTaskModel(CONFIG, MODEL_ARCHITECTURE, len(DISTRIBUTIONS)).to(
         CONFIG["DEVICE"]
     )
     state_dict = torch.load(filename)
     if state_dict is None:
         logger.debug("State dict is illegible! Quitting")
-        sys.exit(0)
     model.load_state_dict(state_dict)
 
     logger.debug(f"Analyzing model from {filename}")
@@ -368,9 +348,6 @@ def model_setup():
 
 # Sanity-check the model's performance (good for presentation)
 def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: sanity_check.py models/your_model_weights.pth")
-        sys.exit(0)
 
     model = model_setup()
     model.eval()
@@ -385,7 +362,6 @@ def main():
         logger.warning(
             f"{CONFIG['NUM_DIMENSIONS']} dimensions is not supported, exiting"
         )
-        sys.exit(0)
 
 
 if __name__ == "__main__":
