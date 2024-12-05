@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 
 from data_handling import get_dataset, make_weights_filename
-from distributions import NUM_DISTS
+from distributions import NUM_DISTS, DISTRIBUTIONS
 from metrics import calculate_metrics, display_metrics
 from model import CustomLoss
 from visualizations import visualize_activations_avg, confusion
@@ -115,8 +115,7 @@ def run_model(model, config, mode):
                 optimizer.step()
 
             if mode == "TEST":
-                confusion(y, pred, NUM_DISTS)
-
+                confusion(y, pred, NUM_DISTS, DISTRIBUTIONS)
                 # Only one batch during testing, so we're basically done.
                 best_metrics = calculate_metrics(
                     pred, y, config["NUM_DIMENSIONS"], mode=mode

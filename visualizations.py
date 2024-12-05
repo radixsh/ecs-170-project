@@ -116,17 +116,17 @@ def visualize_weights(model, layer_names=None):
         # Skip layers without weights
         if not hasattr(layer, 'weight') or layer.weight is None:
             continue
-        
+
         # Filter specific layers if names are provided
         if layer_names and name not in layer_names:
             continue
 
         # Get the weights as a numpy array
         weights = np.abs(layer.weight.detach().cpu().numpy())
-        
+
         # Apply symmetric smoothstep normalization
         normalized_weights = smoothstep(weights)
-        
+
         # Plot the normalized weights
         plt.figure(figsize=(12, 8))
         sns.heatmap(normalized_weights, cmap='viridis', cbar=True, vmin=0, vmax=1)
@@ -140,7 +140,7 @@ def visualize_activations_avg(model, dataloader, device='cpu'):
     """
     Visualizes the normalized average activations (softmax over neurons) of a model over a batch of data,
     considering task-specific outputs.
-    
+
     Args:
         model (nn.Module): The model to inspect.
         dataloader (DataLoader): DataLoader for input data.
@@ -148,10 +148,10 @@ def visualize_activations_avg(model, dataloader, device='cpu'):
     """
     # Store activations from hooks
     activations = {}
-    
+
     def smoothstep_normalize(tensor):
         return tensor / (1 + tensor)
-    
+
     # Hook function
     def hook_fn(name):
 
@@ -214,7 +214,7 @@ def visualize_activations_avg(model, dataloader, device='cpu'):
 def plot_cumulative_distribution(activations, layer_name, task_name=None):
     """
     Plots the cumulative distribution of activations for a given layer.
-    
+
     Args:
         activations (Tensor): Activations to plot.
         layer_name (str): Name of the layer.
@@ -247,15 +247,19 @@ def plot_cumulative_distribution(activations, layer_name, task_name=None):
     #plt.legend()
     plt.show()
 
-def confusion(y, pred, NUM_DISTS):
-    ground_truth_dists = [np.argmax(entry[0:NUM_DISTS])
-                                    for entry in y]
-
+def confusion(y, pred, NUM_DISTS, DISTRIBUTIONS):
+    ground_truth_dists = [np.argmax(entry[:NUM_DISTS]) for entry in y]
     guessed_dists = np.argmax(pred['classification'], axis=2)
 
-    cm = confusion_matrix(ground_truth_dists, guessed_dists,
-                          normalize="true")
-
-    confusion = ConfusionMatrixDisplay(cm)
-    confusion.plot(cmap="magma")
+    labels = [dist_name for dist_name in list(DISTRIBUTIONS.keys())]
+    disp = ConfusionMatrixDisplay.from_predictions(ground_truth_dists,
+                                                   guessed_dists,
+                                                   display_labels=labels,
+                                                   normalize="true")
+    disp.plot(cmap="magma", include_values=False)
+    plt.xticks(rotation=30)
+    disp.ax_.set_xlabel("Predicted Distribution")
+    disp.ax_.set_ylabel("True Distribution")
+    plt.title("Confusion Matrix")
     plt.show()
+    plt.close()
