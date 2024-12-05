@@ -48,7 +48,13 @@ def run_model(model, config, mode):
 
         # Learning rate scheduler. The rate starts slow to prevent erratic jumps,
         # peaks at 5 epochs, then gradually decreases to flatten out at the last epoch.
-        epochs, warmup_len = config["EPOCHS"], 5
+        epochs = config["EPOCHS"]
+        warmup_len = 5
+        if epochs < warmup_len:
+            print("Not enough epochs! Updating for you.")
+            config['EPOCHS'] = warmup_len+1
+            config = config['EPOCHS']
+        
         warmup_lr = LambdaLR(
             optimizer, lr_lambda=lambda epoch: (epoch + 1) / warmup_len
         )

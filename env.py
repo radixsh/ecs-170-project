@@ -11,12 +11,12 @@ CONFIG = {
 
 MODEL_ARCHITECTURE = {
     # Sizes of the hidden layers in the network that stddev and classification share
-    "SHARED_LAYER_SIZES": [1024,512],
+    "SHARED_LAYER_SIZES": [64,64],
     # Sizes of the hidden layers for the stddev-specific head of the network (can be empty)
     "STDDEV_LAYER_SIZES": [],
     # Sizes of the hidden layers for the classification head of the network (can be empty)
     "CLASS_LAYER_SIZES": [],
 }
 
-HYPERPARAMETER = "LEARNING_RATE"
-VALUES = [1e-2]
+HYPERPARAMETER = "EPOCHS"
+VALUES = [10]
