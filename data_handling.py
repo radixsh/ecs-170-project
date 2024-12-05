@@ -82,7 +82,7 @@ def get_dataset(config, mode):
     return dataset
 
 
-def make_weights_filename(config):
+def make_weights_filename(config, model_architecture):
     """
     Generates a filename to save the model weights in after training.
     Ex: "models/weights_train_1000_sample_30_dims_2_batch_100_lrate_0.01.pth"
@@ -93,13 +93,22 @@ def make_weights_filename(config):
     Returns:
         str: A string for a filename matching the given config.
     """
+
+    sharedlayers = "_".join(str(x) for x in model_architecture['SHARED_LAYER_SIZES'])
+    stddevlayers = "_".join(str(x) for x in model_architecture['STDDEV_LAYER_SIZES'])
+    classlayers = "_".join(str(x) for x in model_architecture['CLASS_LAYER_SIZES'])
+
     return os.path.join(
         "models",
         f"weights_train_{config['TRAIN_SIZE']}_"
         f"sample_{config['SAMPLE_SIZE']}_"
         f"dims_{config['NUM_DIMENSIONS']}_"
         f"batch_{config['BATCH_SIZE']}_"
-        f"lrate_{config['LEARNING_RATE']}"
+        f"epochs_{config['EPOCHS']}_"
+        f"lrate_{config['LEARNING_RATE']}_"
+        f"sharedlayers_[{sharedlayers}]_"
+        f"stddevlayers_[{stddevlayers}]_"
+        f"classlayers_[{classlayers}]"
         f".pth",
     )
 

@@ -188,7 +188,7 @@ def display_metrics(metrics, mode, epoch=-1):
     metrics = {key: np.mean(value) for key, value in metrics.items()}
 
     if mode == "TRAIN":
-        logger.info(
+        logger.debug(
             f"-------------------------------------"
             f" EPOCH {epoch} "
             f"-------------------------------------"
@@ -226,7 +226,7 @@ def display_metrics(metrics, mode, epoch=-1):
             f"\n\t-->  F1 Score: {metrics['avg_f1']:.3f}"
             f"\t{metrics['f1']}"
             f"\nSupport:             Average\tIndividual Classes"
-            f"\n\t--> Accuracy: {metrics['support_accuracy']:.3f}"
+            f"\n\t-->  Accuracy: {metrics['support_accuracy']:.3f}"
             f"\n\t--> Precision: {metrics['avg_support_precision']:.3f}"
             f"\t{metrics['support_precision']}"
             f"\n\t-->    Recall: {metrics['avg_support_recall']:.3f}"

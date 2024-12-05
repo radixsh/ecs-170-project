@@ -40,6 +40,23 @@ def get_indices(dim, num_dists, dists=False, mean=False, stddev=False, support=F
         )
     return out
 
+class FocalLoss(Module):
+    def __init__(self, gamma=1.5):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+
+    def forward(self, logits, targets):
+        probs = torch.nn.functional.softmax(logits, dim=1)
+        # Select the probabilities corresponding to the true class
+        pt = probs[range(len(targets)), targets]
+
+        # Compute the focal loss
+        focal_weight = (1 - pt) ** self.gamma
+        loss = -1 * focal_weight * torch.log(pt)
+
+        return loss.mean()
+
+
 
 class CustomLoss(Module):
     """
@@ -75,6 +92,28 @@ class CustomLoss(Module):
         self.num_dims = num_dims
         self.num_dists = num_dists
         self.num_params_in_use = int(use_mean + use_stddev + use_dists + use_support)
+        self.typical_f1_scores = torch.tensor([
+            0.063436,
+            0.098767,
+            0.086422,
+            0.097707,
+            0.215033,
+            0.141866,
+            0.112384,
+            0.071303,
+            0.113082,
+        ])
+        self.dist_loss = CrossEntropyLoss(
+            #weight=self.typical_f1_scores,
+            label_smoothing=0.15,
+        )
+        #self.dist_loss = FocalLoss()
+        self.support_loss = CrossEntropyLoss(
+                    # Use normalized inverse F1 scores to approximate how hard 
+                    # different classes are to identify. 
+                    weight=torch.tensor([0.351, 0.321, 0.328]),
+        )
+        self.regression_loss = MSELoss()
 
     def forward(self, pred, y):
         """
@@ -104,22 +143,29 @@ class CustomLoss(Module):
             support_targets = y[:, support_idx]
 
             if self.use_dists:
-                loss += CrossEntropyLoss()(
+
+                loss += self.dist_loss(
                     pred["classification"][:, dim, :],
                     torch.argmax(class_targets, dim=1),
                 )
             if self.use_mean:
                 loss += torch.sqrt(
-                    MSELoss()(pred["mean"][:, dim].unsqueeze(1), mean_targets)
+                    self.regression_loss(
+                        pred["mean"][:, dim].unsqueeze(1), 
+                        mean_targets
+                    )
                 )
             if self.use_stddev:
                 loss += torch.sqrt(
-                    MSELoss()(pred["stddev"][:, dim].unsqueeze(1), stddev_targets)
+                    self.regression_loss(
+                        pred["stddev"][:, dim].unsqueeze(1), 
+                        stddev_targets
+                    )
                 )
             if self.use_support:
-                loss += CrossEntropyLoss()(
+                loss += self.support_loss(
                     pred["support"][:,dim,:],
-                    torch.argmax(support_targets,dim=1)
+                    torch.argmax(support_targets,dim=1),
                 )
 
         # Average by the number of losses actually used
@@ -196,6 +242,7 @@ class MultiTaskModel(Module):
         super(MultiTaskModel, self).__init__()
         self.num_dimensions = config["NUM_DIMENSIONS"]
         self.num_classes = num_classes
+        self.architecture = architecture
         self.shared_layer_sizes = architecture["SHARED_LAYER_SIZES"]
         self.stddev_head_layer_sizes = architecture["STDDEV_LAYER_SIZES"]
         self.class_head_layer_sizes = architecture["CLASS_LAYER_SIZES"]

@@ -24,7 +24,7 @@ def main():
         format="%(message)s",
     )
     if len(VALUES) > 1:
-        logger.info(f"Variable hyperparameter is {HYPERPARAMETER}.")
+        logger.debug(f"Variable hyperparameter is {HYPERPARAMETER}.")
 
     start = time.time()
 
@@ -49,10 +49,10 @@ def main():
 
         output = run_model(model, CONFIG, mode="TRAIN")
 
-        torch.save(output["weights"], make_weights_filename(CONFIG))
+        torch.save(output["weights"], make_weights_filename(CONFIG, MODEL_ARCHITECTURE))
         logger.info(f"Finished in {time.time() - train_start:.3f} seconds")
 
-    logger.info(
+    logger.debug(
         f"Finished training {len(VALUES)} models in "
         f"{time.time() - start:.3f} seconds"
     )

@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 
 from model import MultiTaskModel
-from visualizations import regression_png, classification_png
+from visualizations import regression_png, classification_png, visualize_weights
 from data_handling import make_weights_filename, logger
 from distributions import NUM_DISTS
 from core import run_model
@@ -36,8 +36,9 @@ def main():
     for hyperparam_val in VALUES:
         CONFIG[HYPERPARAMETER] = hyperparam_val
 
-        model_filename = make_weights_filename(CONFIG)
+        model_filename = make_weights_filename(CONFIG, MODEL_ARCHITECTURE)
         logger.debug(f"Analyzing model at {model_filename}...")
+        logger.debug(MODEL_ARCHITECTURE)
         state_dict = torch.load(model_filename)
 
         model_start = time.time()
@@ -49,7 +50,7 @@ def main():
         model.load_state_dict(state_dict)
 
         if len(VALUES) > 1:
-            logger.info(
+            logger.debug(
                 f"-------------------------------------"
                 f" {HYPERPARAMETER} = {hyperparam_val} "
                 f"-------------------------------------"
@@ -63,6 +64,9 @@ def main():
         logger.debug(f"(Finished in {time.time() - model_start:.3f} seconds)")
 
     logger.debug(f"Analyzed {len(VALUES)} models in {time.time() - start:.3f} seconds")
+
+    visualize_weights(model)
+
     if len(VALUES) <= 1:
         return
 
