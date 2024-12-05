@@ -11,8 +11,6 @@ from sklearn.metrics import (
     precision_score,
     r2_score,
     recall_score,
-    confusion_matrix,
-    ConfusionMatrixDisplay,
 )
 
 from distributions import NUM_DISTS
@@ -45,8 +43,6 @@ def calculate_metrics(pred, y, num_dimensions, mode):
               a particular measurement of model performance.
     """
     metrics = defaultdict(list)
-    confusion_matrices = []  # Store confusion matrix data for later display
-
     for dim in range(num_dimensions):
         # Loop through the dimensions and take the average over each prediction-target
         # pair, then average over dimensions. The opposite order is not the same.
@@ -73,12 +69,6 @@ def calculate_metrics(pred, y, num_dimensions, mode):
         metrics["support_accuracy"].append(accuracy_score(support_targets, support_preds))
         metrics["mean_r2"].append(r2_score(mean_targets, mean_preds))
         metrics["stddev_r2"].append(r2_score(stddev_targets, stddev_preds))
-
-        #TODO: AttibuteError, wrong object attribution when running model?
-        # Collect confusion matrix data for later visualization in `display_metrics()`.
-        if mode == "TEST":
-            cm = confusion_matrix(class_targets, class_preds, labels=range(NUM_DISTS))
-            confusion_matrices.append((dim, cm))
 
         # Test-only metrics.
         if mode == "TEST":
@@ -170,11 +160,10 @@ def calculate_metrics(pred, y, num_dimensions, mode):
         metrics["support_recall"] = support_recall
         metrics["support_f1"] = support_f1
 
-    # Return metrics and confusion matrix data
-    return metrics, confusion_matrices
+    return metrics
 
 
-def display_metrics(metrics, mode, epoch=-1, confusion_matrices=None):
+def display_metrics(metrics, mode, epoch=-1):
     """
     Displays the loss, classification metrics (accuracy, precision, recall, f1), and
     regression metrics (r2, MAE, MAPE, RMSE) averaged over the model's full run.
@@ -184,7 +173,6 @@ def display_metrics(metrics, mode, epoch=-1, confusion_matrices=None):
     Args:
         metrics (dict): The performance data of the model over all epochs.
         mode (str): "TRAIN" or "TEST", controls the detail of printed metrics.
-        confusion_matrices (list): Optional confusion matrix data to display.
 
     Returns:
         dict: A dict containing averaged performance metrics.
@@ -248,15 +236,5 @@ def display_metrics(metrics, mode, epoch=-1, confusion_matrices=None):
             f"\nLoss:\t\t(Non-performance, diagnostic only)"
             f"\n\t-->  Avg Loss: {metrics['loss']:.3f}"
         )
-
-        # TODO: (Debug) Display confusion matrices if provided
-        if confusion_matrices:
-            for dim, cm in confusion_matrices:
-                disp = ConfusionMatrixDisplay(
-                    confusion_matrix=cm,
-                    display_labels=[f"Class {i}" for i in range(NUM_DISTS)],
-                )
-                disp.plot(cmap="viridis")
-                disp.ax_.set_title(f"Confusion Matrix (Dimension {dim + 1})")
 
     return metrics
