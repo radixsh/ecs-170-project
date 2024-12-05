@@ -19,18 +19,17 @@ def regression_png(name, x_values, means, stddevs, hyperparameter):
     means = np.array(means)[sorted_indices]
     stddevs = np.array(stddevs)[sorted_indices]
 
+    # Plot means and fit a quadratic curve
     plt.scatter(x_values, means, color="royalblue", label="Means")
-    mean_slope, mean_intercept = np.polyfit(x_values, means, deg=1)
-    # Line of best fit only looks bent because of logarithmic scaling
-    mean_trend = np.polyval([mean_slope, mean_intercept], x_values)
-    plt.plot(x_values, mean_trend, color="royalblue", label=f"Mean slope: {mean_slope}")
+    mean_coeffs = np.polyfit(np.log(x_values), means, deg=2)
+    mean_curve = np.polyval(mean_coeffs, np.log(x_values))
+    plt.plot(x_values, mean_curve, color="royalblue", label="Mean Quadratic Fit")
 
+    # Plot stddevs and fit a quadratic curve
     plt.scatter(x_values, stddevs, color="tomato", label="Stddevs")
-    stddev_slope, stddev_intercept = np.polyfit(x_values, stddevs, deg=1)
-    stddev_trend = stddev_slope * x_values + stddev_intercept
-    plt.plot(
-        x_values, stddev_trend, color="tomato", label=f"Stddev slope: {stddev_slope}"
-    )
+    stddev_coeffs = np.polyfit(np.log(x_values), stddevs, deg=2)
+    stddev_curve = np.polyval(stddev_coeffs, np.log(x_values))
+    plt.plot(x_values, stddev_curve, color="tomato", label="Stddev Quadratic Fit")
 
     plt.gca().set_xscale("log")
     plt.xlabel(hyperparameter)
@@ -43,7 +42,7 @@ def regression_png(name, x_values, means, stddevs, hyperparameter):
 
 
 def classification_png(name, x_values, metrics, hyperparameter):
-    # Hardcoded to avoid import issues.
+    # Hardcoded distributions and their colors
     distribution_indices = [
         "beta",
         "gamma",
@@ -66,6 +65,7 @@ def classification_png(name, x_values, metrics, hyperparameter):
         "yellow",
         "black",
     ]
+    
     plt.ylim(0, 1)
     plt.ylabel(name)
 
@@ -73,21 +73,24 @@ def classification_png(name, x_values, metrics, hyperparameter):
     sorted_indices = np.argsort(x_values)
     x_values = x_values[sorted_indices]
 
-    if isinstance(metrics[0], float):  # Handle accuracy differently
-        metrics = np.array(metrics)[sorted_indices]  # Sort 1D metrics array
+    if isinstance(metrics[0], float):  # Handle single metric array (e.g., Accuracy)
+        metrics = np.array(metrics)[sorted_indices]
         plt.scatter(x_values, metrics, color="royalblue", label=name)
-        slope, intercept = np.polyfit(x_values, metrics, deg=1)
-        trend = slope * x_values + intercept
-        plt.plot(x_values, trend, color="royalblue", label=f"Slope: {slope:.3f}")
-    else:  # Sort 2D metrics array for other metrics (F1, Recall, Precision)
+        
+        # Fit a quadratic curve
+        coeffs = np.polyfit(np.log(x_values), metrics, deg=2)
+        curve = np.polyval(coeffs, np.log(x_values))
+        plt.plot(x_values, curve, color="royalblue", label="Quadratic Fit")
+    else:  # Handle multi-metric array (e.g., F1, Recall, Precision)
         metrics = np.array(metrics)[sorted_indices, :]
-        for i in range(metrics.shape[1]):  # Loop over distributions (columns)
+        for i in range(metrics.shape[1]):  # Loop over each metric (columns)
             plt.scatter(
                 x_values, metrics[:, i], color=colors[i], label=distribution_indices[i]
             )
-            slope, intercept = np.polyfit(x_values, metrics[:, i], deg=1)
-            trend = slope * x_values + intercept
-            plt.plot(x_values, trend, color=colors[i])
+            # Fit a quadratic curve for each metric
+            coeffs = np.polyfit(np.log(x_values), metrics[:, i], deg=2)
+            curve = np.polyval(coeffs, np.log(x_values))
+            plt.plot(x_values, curve, color=colors[i], linestyle="--", label=f"{distribution_indices[i]} Fit")
 
     plt.gca().set_xscale("log")
     plt.xlabel(hyperparameter)
@@ -97,6 +100,8 @@ def classification_png(name, x_values, metrics, hyperparameter):
     destination = f"{hyperparameter.lower()}_{name.replace(' ', '_')}.png"
     plt.savefig(os.path.join("results", destination), bbox_inches="tight")
     plt.show()
+
+
 
 def visualize_weights(model, layer_names=None):
     """
