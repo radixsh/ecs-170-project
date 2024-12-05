@@ -1,5 +1,4 @@
 import warnings
-import logging
 from collections import defaultdict
 
 import torch
@@ -12,7 +11,7 @@ from data_handling import get_dataset, make_weights_filename
 from distributions import NUM_DISTS
 from metrics import calculate_metrics, display_metrics
 from model import CustomLoss
-from visualizations import visualize_activations_avg
+from visualizations import visualize_activations_avg, confusion
 
 ### Illegal imports: env, generate_data, sanity_check, performance, train_multiple
 
@@ -44,7 +43,7 @@ def run_model(model, config, mode):
         model.train()
         torch.set_grad_enabled(True)
         # Use one of the following optimizers: Adam, AdamW, Adamax, NAdam, RMSprop.
-        # These use second-order gradient; first-order optimizers like SGD never 
+        # These use second-order gradient; first-order optimizers like SGD never
         # overcome an initial local minima in the gradient.
         optimizer = Adamax(
             model.parameters(),
@@ -59,7 +58,7 @@ def run_model(model, config, mode):
             print("Not enough epochs! Updating for you.")
             config['EPOCHS'] = warmup_len+1
             config = config['EPOCHS']
-        
+
         warmup_lr = LambdaLR(
             optimizer, lr_lambda=lambda epoch: (epoch + 1) / warmup_len
         )
@@ -87,7 +86,7 @@ def run_model(model, config, mode):
 
     loss_function = CustomLoss(num_dims=config["NUM_DIMENSIONS"], num_dists=NUM_DISTS)
 
-    # Need to track the best loss to output the best model. 
+    # Need to track the best loss to output the best model.
     best_loss = float('inf')
     best_weights = None # Unclear what type this should be.
     best_metrics = defaultdict(list)
@@ -116,6 +115,8 @@ def run_model(model, config, mode):
                 optimizer.step()
 
             if mode == "TEST":
+                confusion(y, pred, NUM_DISTS)
+
                 # Only one batch during testing, so we're basically done.
                 best_metrics = calculate_metrics(
                     pred, y, config["NUM_DIMENSIONS"], mode=mode

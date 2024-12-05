@@ -1,10 +1,12 @@
 import os
-import seaborn as sns
 
+import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
 import torch
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
 ### No importing custom files.
 
@@ -243,4 +245,17 @@ def plot_cumulative_distribution(activations, layer_name, task_name=None):
     plt.xlim(xmin=0,xmax=1)
     plt.ylim(ymin=0,ymax=1)
     #plt.legend()
+    plt.show()
+
+def confusion(y, pred, NUM_DISTS):
+    ground_truth_dists = [np.argmax(entry[0:NUM_DISTS])
+                                    for entry in y]
+
+    guessed_dists = np.argmax(pred['classification'], axis=2)
+
+    cm = confusion_matrix(ground_truth_dists, guessed_dists,
+                          normalize="true")
+
+    confusion = ConfusionMatrixDisplay(cm)
+    confusion.plot(cmap="magma")
     plt.show()
