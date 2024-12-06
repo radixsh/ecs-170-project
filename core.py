@@ -117,7 +117,11 @@ def run_model(model, config, mode):
                 optimizer.step()
 
             if mode == "TEST":
-                confusion(y, pred, NUM_DISTS, DISTRIBUTIONS)
+                if config['NUM_DIMENSIONS'] == 1:
+                    confusion(y, pred, NUM_DISTS, DISTRIBUTIONS)
+                else:
+                    print(f"{config['NUM_DIMENSIONS']}-dimensional confusion "
+                          f"matrix not supported, skipping")
                 # Only one batch during testing, so we're basically done.
                 best_metrics = calculate_metrics(
                     pred, y, config["NUM_DIMENSIONS"], mode=mode
