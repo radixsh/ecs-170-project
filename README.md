@@ -1,25 +1,22 @@
 # ECS 170 AI Project: Deep Learning for Meta-Statistical Inference
 **Quickstart**:
-* _(Remove the `data` and `models` directories in case there are outdated
-  files)_
-* In `env.py`, set HYPERPARAMETER to whatever hyperparameter you want to change,
-  and populate VALUES with the values you want HYPERPARAMETER to take on.
+* Set hyperparameters in `env.py`. HYPERPARAMETER and VALUES indicate a variable
+  hyperparameter which will be altered with each training run.
 * Run `train_multiple.py` to train models for each HYPERPARAMETER value you set.
   The model weights will be saved into a new `models` subdirectory.
-* Then run `performance.py` to measure classification and regression performance
-  of each model. The scatter-plots will be saved as pngs into the `results`
-  subdirectory.
+* Run `performance.py` to measure classification and regression performance.
 * _Optionally, choose a model and run `sanity_check.py
   models/your_model_here.pth` to visualize the specified model's classification
   performance._
+* Includes a pretrained model.
 
 **Background**: The goal of this code is to train a multitask deep neural network
-which can identify the probability distribution underlying a given dataset. 
+which can identify the probability distribution underlying a given dataset.
 It attempts to extract the mean, standard deviation, and family of distribution.
 The general architecture is as follows:
-* Input layer of `SAMPLE_SIZE * NUM_DIMENSIONS` units. Feeds to the mean head and 
+* Input layer of `SAMPLE_SIZE * NUM_DIMENSIONS` units. Feeds to the mean head and
   main shared layers.
-* A one-layer head for the mean-regression task for each dimension. Accepts input 
+* A one-layer head for the mean-regression task for each dimension. Accepts input
   from the input layer and outputs to the loss function.
 * A series of hidden layers which are shared by the stddev and classification
   tasks. Accepts input from the input layer and outputs to the stddev and
@@ -30,27 +27,6 @@ The general architecture is as follows:
   input from the main shared layers and outputs to the loss function.
   The outputs are packaged back together into a vector which matches that of the
   dataset labels - see below.
-
-Next steps:
-- [x] Distinguish between 9 different distribution families
-- [x] Plot single-variable regression performance (MAE, MAPE, R^2)
-- [x] Sanity-check (visualize) the model's classification performance on
-  single-variable data: Plot the sample data points, the model's predicted
-  distribution, and the ground truth distribution (2D visualizations)
-- [x] Generate multi-dimensional data, and add multi-dimensional training
-  support to neural network code
-- [x] Sanity-check (visualize) the model's classification performance on
-  2-dimensional distributions (3D visualizations)
-- [x] Plot multi-variable classification and regression performance (accuracy,
-  precision, recall, F1, MAE, MAPE, R^2)
-- [x] Multidimensional hyperparameter tuning: Find best SAMPLE_SIZE (30, 33, 36,
-  39, 42)
-- [ ] Multidimensional hyperparameter tuning: Find best BATCH_SIZE (in progress)
-- [ ] Multidimensional hyperparameter tuning: Find best EPOCHS
-- [ ] Multidimensional hyperparameter tuning: Find best TRAIN_SIZE (less
-  priority because, presumably, biggest is best)
-- [ ] Train the model separately on different runs, and save only the best one?
-  (probably not implementing this)
 
 ## Runnable files
 ### `train_multiple.py`
@@ -68,7 +44,7 @@ Imports from: `env.py`, `data_handling.py`, `core.py`, `model.py`, `distribution
 Illegal imports: None.
 
 ### `performance.py`
-Creates scatter plots of performance of each model which aligns with the 
+Creates scatter plots of performance of each model which aligns with the
 current `CONFIG` in `env.py`
 
 - Classification: accuracy, precision, recall, F1-score
@@ -93,7 +69,7 @@ each of the 9 distribution families. If `env.py`'s NUM_DIMENSIONS is 2, then
 `sanity_check.py` tests the model on all 81 possible permutation pairs.
 
 ### `generate_data.py`
-Generates train AND test data based on `CONFIG` in `env.py`, 
+Generates train AND test data based on `CONFIG` in `env.py`,
 saves it to `data`.
 
 Imported by: None.
@@ -102,17 +78,17 @@ Illegal imports: None.
 
 ## Documentation for supporting files
 ### `core.py`
-Where all training and testing for the model occurs. 
+Where all training and testing for the model occurs.
 Learning rate schedule and optimizer live here.
 
-*run_model*: Main call to train or test the model. If in training mode, 
+*run_model*: Main call to train or test the model. If in training mode,
 sets up an optimizer, creates a loss function object, then loops through
-epochs and adjusts model weights, displaying metrics after each epoch. 
+epochs and adjusts model weights, displaying metrics after each epoch.
 If in testing mode, runs one epoch and prints more detailed metrics.
 
 Imported by: `train_multiple.py`, `performance.py`.
 Imports from: `model.py`, `metrics.py`, `data_handling.py`.
-Illegal imports: `env.py`, `train_multiple.py`, `performance.py`, 
+Illegal imports: `env.py`, `train_multiple.py`, `performance.py`,
   `generate_data.py`, `sanity_check.py`.
 
 
@@ -131,19 +107,19 @@ dict. This becomes the filename to which the model's weights are saved.
 
 Imported by: `core.py`, `generate_data.py`.
 Imports from: `distributions.py`.
-Illegal imports: `env.py`, `core.py`, `metrics.py`, `train_multiple.py`, 
+Illegal imports: `env.py`, `core.py`, `metrics.py`, `train_multiple.py`,
   `performance.py`, `generate_data.py`, `sanity_check.py`.
 
 ### `metrics.py`
 Handles calculation and print-display of the model's performance metrics.
 
-*calculate_metrics*: Calculates the model's performance on a battery of 
-tests and averages them over the dimensionality of the data. 
-For classification tasks, these are accuracy, recall, precision, and f1. 
-For regression tasks, these are r2, MAE, MAPE, and RMSE. 
+*calculate_metrics*: Calculates the model's performance on a battery of
+tests and averages them over the dimensionality of the data.
+For classification tasks, these are accuracy, recall, precision, and f1.
+For regression tasks, these are r2, MAE, MAPE, and RMSE.
 No loss calculations are performed.
 
-*display_metrics*: Displays the loss, classification metrics, 
+*display_metrics*: Displays the loss, classification metrics,
 and regression metrics, averaged over the model's full run.
 
 Imported by: `core.py`.
@@ -158,12 +134,12 @@ Contains the model architecture and loss function.
 of cross entropy loss and RMSE (root mean squared error) over each dimension
 and classification/regression task, respectively.
 
-*Head*: Class template for the task-specific heads. 
+*Head*: Class template for the task-specific heads.
 
 *MultiTaskModel*: Constructs the model. There are two sets of shared layers,
 the first of which is only the input layer, fixed at size `SAMPLE_SIZE`.
 The input layer feeds into both the head for mean regression and
-the second set of shared layers. If the network displays evidence of shared 
+the second set of shared layers. If the network displays evidence of shared
 representations, that representation is probably going on in the second
 set of shared layers. These layers feed into both the stddev and
 classification heads, which are controlled by their respective lists.
@@ -181,6 +157,7 @@ Illegal imports: Everything.
 
 ### `visualizations.py`
 Creates and saves plots of the model's performance over a series of runs.
+Also displays heatmaps for activations and weights, and a confusion matrix.
 
 Imported by: `core.py`, `metrics.py`.
 Imports from: None.
@@ -194,16 +171,16 @@ standard deviation, and uses those to calculate its standard parameters.
 These parameters are used in each of the child classes two main methods,
 `rng` and `pdf`. The former returns a random sample of `SAMPLE_SIZE`
 many points from the distribution. The latter returns the distribution's
-probability density function, for use in visualization. 
+probability density function, for use in visualization.
 
-Each child class also has a `get_label` method for data generation. 
+Each child class also has a `get_label` method for data generation.
 The label data is organized in the same way as the output layer of the
 neural network: the first `NUM_DISTS` entries are a one-hot vector
-indicating which distribution family it came from, and the last two 
+indicating which distribution family it came from, and the last two
 entries aremean and standard deviation.
 
-Each piece of training or test data is a tuple, where the first entry 
-is an output from `rng`, and the second entry is an output from `get_label`. 
+Each piece of training or test data is a tuple, where the first entry
+is an output from `rng`, and the second entry is an output from `get_label`.
 
 For instance, this dataset has 9 entries, one example per distribution family.
 The first entry in the dataset indicates that the points `[1.29251874e-05,
@@ -231,7 +208,7 @@ a beta distribution with `mean=0.09957` and `stddev=0.0873`.
  (array([ 5.87227715, 11.89298907,  5.25918688, 10.20213871, 10.24144629]),
   [0, 0, 0, 0, 0, 0, 0, 0, 1, 8.531292456133006, 3.6040852489596937])]
 ```
-Imported by: `data_handling.py`, `metrics.py`, `performance.py`, 
+Imported by: `data_handling.py`, `metrics.py`, `performance.py`,
   `train_multiple.py`.
 Imports from: None.
 Illegal imports: Everything.

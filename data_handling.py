@@ -31,7 +31,10 @@ def get_dataset(config, mode):
     Returns:
         Dataset object: A torch Dataset object with data compatible with config.
     """
-    data_size = config[f"{mode}_SIZE"]
+    if mode == "VAL":
+        data_size = config["TRAIN_SIZE"] // 10
+    else:
+        data_size = config[f"{mode}_SIZE"]
     sample_size = config["SAMPLE_SIZE"]
     num_dims = config["NUM_DIMENSIONS"]
     os.makedirs("data", exist_ok=True)
@@ -57,7 +60,7 @@ def get_dataset(config, mode):
     )
     logger.debug(
         f"Generating {data_size} pieces of {num_dims}-dimensional "
-        f"{mode.lower()}ing data, each with {sample_size} samples."
+        f"{mode.lower()} data, each with {sample_size} samples."
     )
     start = time.time()
 
@@ -94,9 +97,9 @@ def make_weights_filename(config, model_architecture):
         str: A string for a filename matching the given config.
     """
 
-    sharedlayers = "_".join(str(x) for x in model_architecture['SHARED_LAYER_SIZES'])
-    stddevlayers = "_".join(str(x) for x in model_architecture['STDDEV_LAYER_SIZES'])
-    classlayers = "_".join(str(x) for x in model_architecture['CLASS_LAYER_SIZES'])
+    sharedlayers = "_".join(str(x) for x in model_architecture["SHARED_LAYER_SIZES"])
+    stddevlayers = "_".join(str(x) for x in model_architecture["STDDEV_LAYER_SIZES"])
+    classlayers = "_".join(str(x) for x in model_architecture["CLASS_LAYER_SIZES"])
 
     return os.path.join(
         "models",

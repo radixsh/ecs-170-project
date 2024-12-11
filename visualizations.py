@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
 import torch
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 ### No importing custom files.
+
 
 def regression_png(name, x_values, means, stddevs, hyperparameter):
     both = means + stddevs + [0]
@@ -67,7 +68,7 @@ def classification_png(name, x_values, metrics, hyperparameter):
         "yellow",
         "black",
     ]
-    
+
     plt.ylim(0, 1)
     plt.ylabel(name)
 
@@ -78,7 +79,7 @@ def classification_png(name, x_values, metrics, hyperparameter):
     if isinstance(metrics[0], float):  # Handle single metric array (e.g., Accuracy)
         metrics = np.array(metrics)[sorted_indices]
         plt.scatter(x_values, metrics, color="royalblue", label=name)
-        
+
         # Fit a quadratic curve
         coeffs = np.polyfit(np.log(x_values), metrics, deg=2)
         curve = np.polyval(coeffs, np.log(x_values))
@@ -92,7 +93,13 @@ def classification_png(name, x_values, metrics, hyperparameter):
             # Fit a quadratic curve for each metric
             coeffs = np.polyfit(np.log(x_values), metrics[:, i], deg=2)
             curve = np.polyval(coeffs, np.log(x_values))
-            plt.plot(x_values, curve, color=colors[i], linestyle="--", label=f"{distribution_indices[i]} Fit")
+            plt.plot(
+                x_values,
+                curve,
+                color=colors[i],
+                linestyle="--",
+                label=f"{distribution_indices[i]} Fit",
+            )
 
     plt.gca().set_xscale("log")
     plt.xlabel(hyperparameter)
@@ -104,7 +111,6 @@ def classification_png(name, x_values, metrics, hyperparameter):
     plt.show()
 
 
-
 def visualize_weights(model, layer_names=None):
     """
     Visualizes the weights of a given model layer-by-layer with symmetric smoothstep normalization.
@@ -113,13 +119,14 @@ def visualize_weights(model, layer_names=None):
         model (nn.Module): The PyTorch model.
         layer_names (list, optional): List of layer names to visualize. Defaults to None, visualizing all layers.
     """
+
     def smoothstep(x):
         """Smoothstep normalization: x / (1 + x)."""
         return x / (1 + x)
 
     for name, layer in model.named_modules():
         # Skip layers without weights
-        if not hasattr(layer, 'weight') or layer.weight is None:
+        if not hasattr(layer, "weight") or layer.weight is None:
             continue
 
         # Filter specific layers if names are provided
@@ -134,14 +141,14 @@ def visualize_weights(model, layer_names=None):
 
         # Plot the normalized weights
         plt.figure(figsize=(12, 8))
-        sns.heatmap(normalized_weights, cmap='viridis', cbar=True, vmin=0, vmax=1)
-        plt.title(f'Normalized Weights of Layer: {name}')
+        sns.heatmap(normalized_weights, cmap="viridis", cbar=True, vmin=0, vmax=1)
+        plt.title(f"Normalized Weights of Layer: {name}")
         plt.xlabel("Input Features")
         plt.ylabel("Output Features")
         plt.show()
 
 
-def visualize_activations_avg(model, dataloader, device='cpu'):
+def visualize_activations_avg(model, dataloader, device="cpu"):
     """
     Visualizes the normalized average activations (softmax over neurons) of a model over a batch of data,
     considering task-specific outputs.
@@ -162,8 +169,10 @@ def visualize_activations_avg(model, dataloader, device='cpu'):
 
         def hook(module, input, output):
             if isinstance(output, dict):
-                activations[name] = {key: smoothstep_normalize(value.detach().cpu().mean(dim=0))
-                                    for key, value in output.items()}
+                activations[name] = {
+                    key: smoothstep_normalize(value.detach().cpu().mean(dim=0))
+                    for key, value in output.items()
+                }
             else:
                 avg_activation = output.detach().cpu().mean(dim=0)
                 activations[name] = smoothstep_normalize(avg_activation)
@@ -192,13 +201,23 @@ def visualize_activations_avg(model, dataloader, device='cpu'):
     for name, activation in activations.items():
         if isinstance(activation, dict):  # Task-specific activations
             for task, task_activation in activation.items():
-                task_activation = task_activation.squeeze()  # Remove singleton dimensions
+                task_activation = (
+                    task_activation.squeeze()
+                )  # Remove singleton dimensions
                 if task_activation.ndimension() > 1:
                     # Handle multi-dimensional activations (e.g., for classification tasks)
                     task_activation = task_activation.view(-1)
                 plt.figure(figsize=(12, 8))
-                sns.heatmap(task_activation[np.newaxis, :], cmap='magma', cbar=True, vmin=0, vmax=1)
-                plt.title(f"Normalized Average Activation - Layer: {name}, Task: {task}")
+                sns.heatmap(
+                    task_activation[np.newaxis, :],
+                    cmap="magma",
+                    cbar=True,
+                    vmin=0,
+                    vmax=1,
+                )
+                plt.title(
+                    f"Normalized Average Activation - Layer: {name}, Task: {task}"
+                )
                 plt.show()
 
                 # Cumulative distribution plot
@@ -209,12 +228,15 @@ def visualize_activations_avg(model, dataloader, device='cpu'):
                 # Handle multi-dimensional activations
                 avg_activation = avg_activation.view(-1)
             plt.figure(figsize=(12, 8))
-            sns.heatmap(avg_activation[np.newaxis, :], cmap='magma', cbar=True, vmin=0, vmax=1)
+            sns.heatmap(
+                avg_activation[np.newaxis, :], cmap="magma", cbar=True, vmin=0, vmax=1
+            )
             plt.title(f"Normalized Average Activation - Layer: {name}")
             plt.show()
 
             # Cumulative distribution plot
             plot_cumulative_distribution(avg_activation, name)
+
 
 def plot_cumulative_distribution(activations, layer_name, task_name=None):
     """
@@ -229,38 +251,34 @@ def plot_cumulative_distribution(activations, layer_name, task_name=None):
     activations = activations.view(-1).numpy()
     sorted_activations = np.sort(activations)
     cdf = np.cumsum(sorted_activations) / np.sum(sorted_activations)
-    x = np.linspace(-1,1,100)
-    y = x
 
     plt.figure(figsize=(8, 8))
-    plt.plot(sorted_activations, cdf, x, y)
+    plt.plot(sorted_activations, cdf)
 
     ticks = np.arange(0, 1, 0.1)
     plt.xticks(ticks)
     plt.yticks(ticks)
 
-
-    plt.xlabel('Normalized Activation Value')
-    plt.ylabel('Cumulative Probability')
+    plt.xlabel("Normalized Activation Value")
+    plt.ylabel("Cumulative Probability")
     title = f"Cumulative Distribution - Layer: {layer_name}"
     if task_name:
         title += f", Task: {task_name}"
     plt.title(title)
     plt.grid(True)
-    plt.xlim(xmin=0,xmax=1)
-    plt.ylim(ymin=0,ymax=1)
-    #plt.legend()
+    plt.xlim(xmin=0, xmax=1)
+    plt.ylim(ymin=0, ymax=1)
     plt.show()
+
 
 def confusion(y, pred, NUM_DISTS, DISTRIBUTIONS):
     ground_truth_dists = [np.argmax(entry[:NUM_DISTS]) for entry in y]
-    guessed_dists = np.argmax(pred['classification'], axis=2)
+    guessed_dists = np.argmax(pred["classification"], axis=2)
 
     labels = [dist_name for dist_name in list(DISTRIBUTIONS.keys())]
-    disp = ConfusionMatrixDisplay.from_predictions(ground_truth_dists,
-                                                   guessed_dists,
-                                                   display_labels=labels,
-                                                   normalize="true")
+    disp = ConfusionMatrixDisplay.from_predictions(
+        ground_truth_dists, guessed_dists, display_labels=labels, normalize="true"
+    )
     disp.plot(cmap="magma", include_values=False)
     plt.xticks(rotation=30)
     disp.ax_.set_xlabel("Predicted Distribution")

@@ -8,17 +8,46 @@ rng = np.random.default_rng()
 
 # Class headers
 
-class Distribution: pass
 
-class Beta(Distribution): pass
-class Gamma(Distribution): pass
-class Gumbel(Distribution): pass
-class Laplace(Distribution): pass
-class Logistic(Distribution): pass
-class Lognormal(Distribution): pass
-class Normal(Distribution): pass
-class Rayleigh(Distribution): pass
-class Wald(Distribution): pass
+class Distribution:
+    pass
+
+
+class Beta(Distribution):
+    pass
+
+
+class Gamma(Distribution):
+    pass
+
+
+class Gumbel(Distribution):
+    pass
+
+
+class Laplace(Distribution):
+    pass
+
+
+class Logistic(Distribution):
+    pass
+
+
+class Lognormal(Distribution):
+    pass
+
+
+class Normal(Distribution):
+    pass
+
+
+class Rayleigh(Distribution):
+    pass
+
+
+class Wald(Distribution):
+    pass
+
 
 # Distributions for in use in data generation.
 # The length is a helpful constant to reference.
@@ -28,23 +57,24 @@ class Wald(Distribution): pass
 ## Code will function if some of these are commented out
 ## and current data/models are deleted.
 DISTRIBUTIONS = {
-    "Beta": Beta, # Support = (0,1)
-    "Gamma": Gamma, # Support = R+
-    "Gumbel": Gumbel, # Support = R
-    "Laplace": Laplace, # Support = R
-    "Logistic": Logistic, # Support = R+
-    "Lognormal": Lognormal, # Support = R
-    "Normal": Normal, # Support = R
-    "Rayleigh": Rayleigh, # Support = R+
-    "Wald": Wald, # Support = R+
+    "Beta": Beta,  # Support = (0,1)
+    "Gamma": Gamma,  # Support = R+
+    "Gumbel": Gumbel,  # Support = R
+    "Laplace": Laplace,  # Support = R
+    "Logistic": Logistic,  # Support = R+
+    "Lognormal": Lognormal,  # Support = R
+    "Normal": Normal,  # Support = R
+    "Rayleigh": Rayleigh,  # Support = R+
+    "Wald": Wald,  # Support = R+
 }
 
-SUPPORTS = ['I', 'R', 'R+']
+SUPPORTS = ["I", "R", "R+"]
 
 # Extremely useful constant
 NUM_DISTS = len(DISTRIBUTIONS)
 
 # Class definitions
+
 
 class Distribution:
     """
@@ -145,7 +175,7 @@ class Gamma(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R+", name="Gamma")
         self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
-        
+
         self.shape = (self.mean / self.stddev) ** 2
         self.scale = (self.stddev**2) / self.mean
 
@@ -160,7 +190,7 @@ class Gumbel(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R", name="Gumbel")
         self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
-        
+
         self.scale = self.stddev * math.sqrt(6) / math.pi
         self.loc = self.mean - self.scale * float(np.euler_gamma)
 
@@ -175,7 +205,7 @@ class Laplace(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R", name="Laplace")
         self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
-        
+
         self.scale = self.stddev / math.sqrt(2)
 
     def rng(self, sample_size):
@@ -189,7 +219,7 @@ class Logistic(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R", name="Logistic")
         self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
-        
+
         self.scale = self.stddev * math.sqrt(3) / math.pi
 
     def rng(self, sample_size):
@@ -203,7 +233,7 @@ class Lognormal(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R+", name="Lognormal")
         self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
-        
+
         self.shape = math.sqrt(math.log(1 + (self.stddev / self.mean) ** 2))
         self.loc = math.log(
             (self.mean**2) / math.sqrt((self.mean**2) + (self.stddev**2))
@@ -213,6 +243,7 @@ class Lognormal(Distribution):
         return rng.lognormal(self.loc, self.shape, sample_size)
 
     def pdf(self, x):
+        # This is bugged because scipystats devs don't understand how logarithms work
         return sps.lognorm.pdf(x, self.shape, loc=self.loc)
 
 
@@ -220,7 +251,6 @@ class Normal(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R", name="Normal")
         self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
-        
 
     def rng(self, sample_size):
         return rng.normal(self.mean, self.stddev, sample_size)
@@ -233,7 +263,7 @@ class Rayleigh(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R+", name="Rayleigh")
         self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
-        
+
         self.scale = self.mean * math.sqrt(2 / math.pi)
 
     def rng(self, sample_size):
@@ -247,7 +277,7 @@ class Wald(Distribution):
     def __init__(self, mean="not set", stddev="not set"):
         super().__init__(mean, stddev, support="R+", name="Wald")
         self.onehot[list(DISTRIBUTIONS.keys()).index(self.name)] = 1
-        
+
         self.lam = (self.mean**3) / (self.stddev**2)
         self.mu = self.mean / self.lam
 
@@ -256,6 +286,7 @@ class Wald(Distribution):
 
     def pdf(self, x):
         return sps.invgauss.pdf(x, self.mu, scale=self.lam)
+
 
 # Updates the dict with the new classes.
 # Incomprehensible programming war crime, but it works

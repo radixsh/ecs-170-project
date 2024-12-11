@@ -3,7 +3,7 @@ from collections import defaultdict
 import logging
 
 import torch
-from torch.optim import Adam, Adamax, AdamW, NAdam
+from torch.optim import Adamax
 from torch.optim.lr_scheduler import SequentialLR, CosineAnnealingLR, LambdaLR
 from torch.utils.data import DataLoader
 import numpy as np
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
+
 
 def run_model(model, config, mode):
     """
@@ -40,7 +41,7 @@ def run_model(model, config, mode):
 
     if mode == "TRAIN":
         # Make an additional dataset here for validation.
-        val_dataset = get_dataset(config, 'TEST')
+        val_dataset = get_dataset(config, "VAL")
         model.train()
         torch.set_grad_enabled(True)
         # Use one of the following optimizers: Adam, AdamW, Adamax, NAdam, RMSprop.
@@ -56,10 +57,7 @@ def run_model(model, config, mode):
         epochs = config["EPOCHS"]
         warmup_len = 5
         if epochs < warmup_len:
-            raise Exception(f"Not enough epochs! EPOCHS={epochs} must be at "
-                            f"least 6.")
-            # config['EPOCHS'] = warmup_len+1
-            # epochs = config['EPOCHS']
+            raise Exception(f"Not enough epochs! EPOCHS={epochs} must be at least 6.")
 
         warmup_lr = LambdaLR(
             optimizer, lr_lambda=lambda epoch: (epoch + 1) / warmup_len
@@ -72,7 +70,9 @@ def run_model(model, config, mode):
         )
 
         dataloader = DataLoader(dataset, batch_size=config["BATCH_SIZE"], shuffle=True)
-        val_dataloader = DataLoader(val_dataset, batch_size=config["TRAIN_SIZE"], shuffle=True)
+        val_dataloader = DataLoader(
+            val_dataset, batch_size=config["TRAIN_SIZE"], shuffle=True
+        )
         warnings.simplefilter("ignore", UserWarning)
 
     # Only one epoch and only one batch for testing.
@@ -89,14 +89,13 @@ def run_model(model, config, mode):
     loss_function = CustomLoss(num_dims=config["NUM_DIMENSIONS"], num_dists=NUM_DISTS)
 
     # Need to track the best loss to output the best model.
-    best_loss = float('inf')
-    best_weights = None # Unclear what type this should be.
+    best_loss = float("inf")
+    best_weights = None  # Unclear what type this should be.
     best_metrics = defaultdict(list)
 
     # Stop the model early if the losses if last PATIENCE epochs are less than EPSILON apart.
     counter = 0
     PATIENCE = 5
-
 
     # Validation metrics are calculated and displayed at the end of every epoch
     # in training mode. In testing mode, this just runs once.
@@ -117,11 +116,13 @@ def run_model(model, config, mode):
                 optimizer.step()
 
             if mode == "TEST":
-                if config['NUM_DIMENSIONS'] == 1:
+                if config["NUM_DIMENSIONS"] == 1:
                     confusion(y, pred, NUM_DISTS, DISTRIBUTIONS)
                 else:
-                    print(f"{config['NUM_DIMENSIONS']}-dimensional confusion "
-                          f"matrix not supported, skipping")
+                    print(
+                        f"{config['NUM_DIMENSIONS']}-dimensional confusion "
+                        f"matrix not supported, skipping"
+                    )
                 # Only one batch during testing, so we're basically done.
                 best_metrics = calculate_metrics(
                     pred, y, config["NUM_DIMENSIONS"], mode=mode
@@ -134,7 +135,7 @@ def run_model(model, config, mode):
             # We've only seen one epoch and one batch, so everything is 'best'
             visualize_activations_avg(model, dataloader)
             best_weights = model.state_dict()
-            best_metrics['loss'] = epoch_loss
+            best_metrics["loss"] = epoch_loss
             best_metrics = display_metrics(best_metrics, mode, epoch + 1)
 
         if mode == "TRAIN":
@@ -143,13 +144,14 @@ def run_model(model, config, mode):
             val_metrics = defaultdict(list)
             with torch.no_grad():
                 for X, y in val_dataloader:
-                    X, y = X.to(config["DEVICE"]).float(), y.to(config["DEVICE"]).float()
+                    X = X.to(config["DEVICE"]).float()
+                    y = y.to(config["DEVICE"]).float()
                     pred = model(X)
                     val_loss = loss_function(pred, y).item()
                     val_metrics = calculate_metrics(
                         pred, y, config["NUM_DIMENSIONS"], mode=mode
                     )
-                    val_metrics['loss'] = val_loss
+                    val_metrics["loss"] = val_loss
 
             val_metrics = display_metrics(val_metrics, mode, epoch + 1)
 
@@ -163,8 +165,10 @@ def run_model(model, config, mode):
 
             if counter >= PATIENCE:
                 filename = make_weights_filename(config, model.architecture)
-                logger.info(f"Model stopped training early at epoch {epoch + 1}, "
-                            f"saved to {filename}")
+                logger.info(
+                    f"Model stopped training early at epoch {epoch + 1}, "
+                    f"saved to {filename}"
+                )
                 break
 
     warnings.simplefilter("once", UserWarning)

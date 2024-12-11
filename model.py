@@ -25,8 +25,7 @@ def get_indices(dim, num_dists, dists=False, mean=False, stddev=False, support=F
     # length of 1 dimension = num_dists + 5
     if dists:
         dists_range = range(
-            (dim * (num_dists + 5)) - (num_dists + 5), 
-            (dim * (num_dists + 5)) - 5
+            (dim * (num_dists + 5)) - (num_dists + 5), (dim * (num_dists + 5)) - 5
         )
         out += dists_range
     if mean:
@@ -34,28 +33,8 @@ def get_indices(dim, num_dists, dists=False, mean=False, stddev=False, support=F
     if stddev:
         out.append(dim * (num_dists + 5) - 4)
     if support:
-        out += range(
-            (dim * (num_dists + 5)) - 3, 
-            (dim * (num_dists + 5))
-        )
+        out += range((dim * (num_dists + 5)) - 3, (dim * (num_dists + 5)))
     return out
-
-class FocalLoss(Module):
-    def __init__(self, gamma=1.5):
-        super(FocalLoss, self).__init__()
-        self.gamma = gamma
-
-    def forward(self, logits, targets):
-        probs = torch.nn.functional.softmax(logits, dim=1)
-        # Select the probabilities corresponding to the true class
-        pt = probs[range(len(targets)), targets]
-
-        # Compute the focal loss
-        focal_weight = (1 - pt) ** self.gamma
-        loss = -1 * focal_weight * torch.log(pt)
-
-        return loss.mean()
-
 
 
 class CustomLoss(Module):
@@ -64,13 +43,13 @@ class CustomLoss(Module):
     """
 
     def __init__(
-        self, 
-        use_mean=True, 
-        use_stddev=True, 
-        use_dists=True, 
+        self,
+        use_mean=True,
+        use_stddev=True,
+        use_dists=True,
         use_support=True,
-        num_dims=-1, 
-        num_dists=9
+        num_dims=-1,
+        num_dists=9,
     ):
         """
         Constructor for loss function class.
@@ -92,26 +71,13 @@ class CustomLoss(Module):
         self.num_dims = num_dims
         self.num_dists = num_dists
         self.num_params_in_use = int(use_mean + use_stddev + use_dists + use_support)
-        self.typical_f1_scores = torch.tensor([
-            0.063436,
-            0.098767,
-            0.086422,
-            0.097707,
-            0.215033,
-            0.141866,
-            0.112384,
-            0.071303,
-            0.113082,
-        ])
         self.dist_loss = CrossEntropyLoss(
-            #weight=self.typical_f1_scores,
             label_smoothing=0.15,
         )
-        #self.dist_loss = FocalLoss()
         self.support_loss = CrossEntropyLoss(
-                    # Use normalized inverse F1 scores to approximate how hard 
-                    # different classes are to identify. 
-                    weight=torch.tensor([0.351, 0.321, 0.328]),
+            # Use normalized inverse F1 scores to approximate how hard
+            # different classes are to identify.
+            weight=torch.tensor([0.351, 0.321, 0.328]),
         )
         self.regression_loss = MSELoss()
 
@@ -130,10 +96,10 @@ class CustomLoss(Module):
         """
         loss = 0
         for dim in range(self.num_dims):
-            dists_idx = get_indices(dim+1, self.num_dists, dists=True)
-            mean_idx = get_indices(dim+1, self.num_dists, mean=True)
-            stddev_idx = get_indices(dim+1, self.num_dists, stddev=True)
-            support_idx = get_indices(dim+1, self.num_dists, support=True)
+            dists_idx = get_indices(dim + 1, self.num_dists, dists=True)
+            mean_idx = get_indices(dim + 1, self.num_dists, mean=True)
+            stddev_idx = get_indices(dim + 1, self.num_dists, stddev=True)
+            support_idx = get_indices(dim + 1, self.num_dists, support=True)
 
             # Class_targets has shape [batch_size, num_classes], others have shape
             # [batch_size], so need to be sliced differently later.
@@ -151,21 +117,19 @@ class CustomLoss(Module):
             if self.use_mean:
                 loss += torch.sqrt(
                     self.regression_loss(
-                        pred["mean"][:, dim].unsqueeze(1), 
-                        mean_targets
+                        pred["mean"][:, dim].unsqueeze(1), mean_targets
                     )
                 )
             if self.use_stddev:
                 loss += torch.sqrt(
                     self.regression_loss(
-                        pred["stddev"][:, dim].unsqueeze(1), 
-                        stddev_targets
+                        pred["stddev"][:, dim].unsqueeze(1), stddev_targets
                     )
                 )
             if self.use_support:
                 loss += self.support_loss(
-                    pred["support"][:,dim,:],
-                    torch.argmax(support_targets,dim=1),
+                    pred["support"][:, dim, :],
+                    torch.argmax(support_targets, dim=1),
                 )
 
         # Average by the number of losses actually used
@@ -320,7 +284,7 @@ class MultiTaskModel(Module):
             ),
             "mean": torch.zeros(batch_size, self.num_dimensions),
             "stddev": torch.zeros(batch_size, self.num_dimensions),
-            "support": torch.zeros(batch_size, self.num_dimensions, 3)
+            "support": torch.zeros(batch_size, self.num_dimensions, 3),
         }
 
         # Call through the shared layers

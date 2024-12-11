@@ -46,10 +46,10 @@ def calculate_metrics(pred, y, num_dimensions, mode):
     for dim in range(num_dimensions):
         # Loop through the dimensions and take the average over each prediction-target
         # pair, then average over dimensions. The opposite order is not the same.
-        dists_idx = get_indices(dim+1, NUM_DISTS, dists=True)
-        mean_idx = get_indices(dim+1, NUM_DISTS, mean=True)
-        stddev_idx = get_indices(dim+1, NUM_DISTS, stddev=True)
-        support_idx = get_indices(dim+1, NUM_DISTS, support=True)
+        dists_idx = get_indices(dim + 1, NUM_DISTS, dists=True)
+        mean_idx = get_indices(dim + 1, NUM_DISTS, mean=True)
+        stddev_idx = get_indices(dim + 1, NUM_DISTS, stddev=True)
+        support_idx = get_indices(dim + 1, NUM_DISTS, support=True)
 
         # Classification metrics need class indices instead of onehot
         class_targets = torch.argmax(y[:, dists_idx], dim=1).numpy()
@@ -66,7 +66,9 @@ def calculate_metrics(pred, y, num_dimensions, mode):
 
         # Standard metrics to be calculated every epoch.
         metrics["accuracy"].append(accuracy_score(class_targets, class_preds))
-        metrics["support_accuracy"].append(accuracy_score(support_targets, support_preds))
+        metrics["support_accuracy"].append(
+            accuracy_score(support_targets, support_preds)
+        )
         metrics["mean_r2"].append(r2_score(mean_targets, mean_preds))
         metrics["stddev_r2"].append(r2_score(stddev_targets, stddev_preds))
 
@@ -198,15 +200,14 @@ def display_metrics(metrics, mode, epoch=-1):
             f"\n\t-->   Stddev R2: {metrics['stddev_r2']:.6f}"
             f"\n\t-->    Accuracy: {metrics['accuracy']:.6f}"
             f"\n\t--> Support Acc: {metrics['support_accuracy']:.6f}"
-            
         )
     elif mode == "TEST":
-        metrics["precision"] = np.mean(precision, axis=0)
-        metrics["recall"] = np.mean(recall, axis=0)
-        metrics["f1"] = np.mean(f1, axis=0)
-        metrics["support_precision"] = np.mean(support_precision, axis=0)
-        metrics["support_recall"] = np.mean(support_recall, axis=0)
-        metrics["support_f1"] = np.mean(support_f1, axis=0)
+        metrics["precision"] = precision
+        metrics["recall"] = recall
+        metrics["f1"] = f1
+        metrics["support_precision"] = support_precision
+        metrics["support_recall"] = support_recall
+        metrics["support_f1"] = support_f1
         for key, value in metrics.items():
             metrics[key] = np.round(value, decimals=3)
         logger.info(

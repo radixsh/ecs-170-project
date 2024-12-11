@@ -16,6 +16,7 @@ logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 logger.addHandler(console_handler)
 
+
 def main():
     """
     Tests a series of models determined by VALUES and HYPERPARAMETER in env.py.
