@@ -1,5 +1,10 @@
 # ECS 170 AI Project: Deep Learning for Meta-Statistical Inference
-**Quickstart**:
+## Project Report can be found at [ECS 170 Project Report.pdf](ECS%20170%20Project%20Report.pdf)
+The Project Report contains background information and motivations for the project.
+
+This README contains only documentation for running the code, with little information about the project as a whole.
+
+## Quickstart
 * Set hyperparameters in `env.py`. HYPERPARAMETER and VALUES indicate a variable
   hyperparameter which will be altered with each training run.
 * Run `train_multiple.py` to train models for each HYPERPARAMETER value you set.
@@ -8,9 +13,10 @@
 * _Optionally, choose a model and run `sanity_check.py
   models/your_model_here.pth` to visualize the specified model's classification
   performance._
-* Includes a pretrained model.
+This repository includes a pretrained model.
 
-**Background**: The goal of this code is to train a multitask deep neural network
+## Background
+The goal of this code is to train a multitask deep neural network
 which can identify the probability distribution underlying a given dataset.
 It attempts to extract the mean, standard deviation, and family of distribution.
 The general architecture is as follows:
@@ -28,7 +34,7 @@ The general architecture is as follows:
   The outputs are packaged back together into a vector which matches that of the
   dataset labels - see below.
 
-## Runnable files
+## Documentation for runnable scripts
 ### `train_multiple.py`
 Trains multiple models, and saves each one's weights into a new `models`
 subdirectory. Each model has hyperparameters set in `env.py`.
